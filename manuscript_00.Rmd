@@ -1,0 +1,53 @@
+---
+title: 'Integrated Ocular Million Single Cell Meta-Atlas for Discovery and Development'
+author:
+  - Vinay Swamy:
+      institute: bg
+  - Zachary Batz:
+      institute: nnrl
+  - Temesgen Fufa:
+      institute: mgog
+  - Robert Hufnagel:
+      institute: mgog
+  - David McGaughey:
+      institute:
+        - bg
+      correspondence: "yes"
+      email: mcgaugheyd@mail.nih.gov
+institute:
+  - bg: Bioinformatics Group, Ophthalmic Genetics & Visual Function Branch, National Eye Institute, National Institutes of Health
+  - nnrl: Neurobiology, Neurodegeneration & Repair Laboratory, National Eye Institute, National Institutes of Health
+  - mgog: Medical Genetics and Ophthalmic Genomics Unit, National Eye Institute, National Institutes of Health
+    
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  word_document:
+    reference_docx: word-styles-reference-01.docx
+    fig_caption: yes
+    pandoc_args:
+      - '--lua-filter=scholarly-metadata.lua'
+      - '--lua-filter=author-info-blocks.lua'
+bibliography: massive_integrated_eye_scRNA.bib
+csl: investigative-ophthalmology-and-visual-science.csl
+abstract: "PURPOSE: To curate a accessible and reliable ocular cell-type specific transcriptome dataset of over one million normal vertebrate ocular cell types with a matching high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We queried several public repositories to find over a dozen healthy, non-perturbed, ocular tissue single cell RNA-seq studies As a non-ocular reference, we also downloaded the pan-mouse Tabula Muris raw data. The XX ocular and XX Tabula Muris cells were sent into a Snakemake-based reproducible pipeline we wrote to quantify transcripts, remove cells with poor quality, normalize expression values, creates a batch-corrected low dimensional space, performs XX differential expression tests, and outputs all as a single SQLite database file: the Single Cell Eye in a Disk (scEiaD) dataset. XXX thousand published cell labels assignments were curated and a machine learning  projected onto the non-labelled cells. Furthermore, we wrote the web application PLAE (https://plae.nei.nih.gov) to display scEiaD. RESULTS: The new portal provides quick visualization of vertebrate eye-related transcriptomes published to date by gene/transcript, XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we showed XX. CONCLUSION: The PLAE v1.0 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on human gene and transcript expression across 54 body and 19 eye tissues. Futhermore the XXX labelled cells across XX studies, X techologies, and 3 species provides a highly challenging benchmarking resource for single cell algorithm development."
+keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
+---
+
+```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
+#knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
+knitr::opts_chunk$set(out.width = '100%', dpi=300)
+library(tidyverse)
+library(citr)
+library(cowplot)
+library(ggrepel)
+library(colorspace)
+library(flextable)
+library(captioner)
+
+# setup caption-ing
+fig_cap <- captioner("Figure")
+supFig_cap <- captioner("Supplemental Figure")
+tab_cap <- captioner("Table")
+supTab_cap <- captioner("Supplemental Table")
+
+```
