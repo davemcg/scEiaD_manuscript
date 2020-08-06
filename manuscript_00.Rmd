@@ -92,6 +92,7 @@ We have built an integrated meta-atlas that:
 
   Pre-calculated pseudobulk differential expression testing in 9 different testing schemes:
 
+  Calculated cell phase (G1, G2)
 ## Will do???
 
 Trajectory
