@@ -1,10 +1,8 @@
 ---
-title: 'Integrated Ocular Million Single Cell Meta-Atlas for Discovery and Development'
+title: 'An Million Transcriptome Ocular Meta-Atlas for Discovery and Development'
 author:
   - Vinay Swamy:
       institute: bg
-  - Zachary Batz:
-      institute: nnrl
   - Temesgen Fufa:
       institute: mgog
   - Robert Hufnagel:
@@ -16,7 +14,6 @@ author:
       email: mcgaugheyd@mail.nih.gov
 institute:
   - bg: Bioinformatics Group, Ophthalmic Genetics & Visual Function Branch, National Eye Institute, National Institutes of Health
-  - nnrl: Neurobiology, Neurodegeneration & Repair Laboratory, National Eye Institute, National Institutes of Health
   - mgog: Medical Genetics and Ophthalmic Genomics Unit, National Eye Institute, National Institutes of Health
     
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
@@ -29,8 +26,8 @@ output:
       - '--lua-filter=author-info-blocks.lua'
 bibliography: massive_integrated_eye_scRNA.bib
 csl: investigative-ophthalmology-and-visual-science.csl
-abstract: "PURPOSE: To curate a accessible and reliable ocular cell-type specific transcriptome dataset of over one million normal vertebrate ocular cell types with a matching high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We queried several public repositories to find eighteen healthy, non-perturbed, ocular tissue single cell RNA-seq studies As a non-ocular reference, we also used the pan-mouse Tabula Muris resource. The XX ocular and XX Tabula Muris cells were sent into a Snakemake-based reproducible pipeline we wrote to quantify transcripts, remove cells with poor quality, normalize expression values, create a batch-corrected low dimensional space, performs XX differential expression tests, and outputs all as a single SQLite database file: the Single Cell Eye in a Disk (scEiaD) dataset. XXX thousand published cell labels assignments were curated and a machine learning  projected onto the non-labelled cells. Furthermore, we wrote the web application PLAE (https://plae.nei.nih.gov) to display scEiaD. RESULTS: The new portal provides quick visualization of vertebrate eye-related transcriptomes published to date by gene/transcript, XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we showed XX. CONCLUSION: The PLAE v1.0 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on human gene and transcript expression across 54 body and 19 eye tissues. Futhermore the XXX labelled cells across XX studies, X techologies, and 3 species provides a highly challenging benchmarking resource for single cell algorithm development."
-keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
+abstract: "The development of highly scalable single cell transcriptome technology has allowed for a high resolution view into huge numbers of single cell transcriptomes. Analyzing the transcriptomes between different projects is highly desirable as this would theoretically allow for better assessment of which effects are consistent across independent studies. However it is difficult to compare and contrast data across different projects as there are substantial batch effects from computational processing, single cell technology utilized, and the natural biological variation. While many single cell transcriptome specific batch correction methods purport to remove the technical noise it is difficult to ascertain which method works best. We developed an R package (scPOP) that can scan the results of multiple methods and key parameter choices and create a ranked list of the best performing methods and parameters. We use this package along with a Snakefile based workflow system to demonstrate how to optimally merge over 1.4 million cells from 30 studies and three species to create a massive ocular single cell transcriptome meta-atlas. This provides a model how to efficiently create meta-atlases for tissues and cells of interest."
+keywords: "RNA-seq, retina, RPE, ocular, eye, Snakemake, singlecell, scRNA, single-cell, singlecell, scPOP, R"
 ---
 
 ```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
@@ -43,73 +40,115 @@ library(ggrepel)
 library(colorspace)
 library(flextable)
 library(captioner)
-
+library(pool)
+library(RSQLite)
+library(formattable)
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
 tab_cap <- captioner("Table")
 supTab_cap <- captioner("Supplemental Table")
 
+scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/massive_integrated_eye_scRNA/MOARTABLES__anthology_limmaFALSE___Mus_musculus_Macaca_fascicularis_Homo_sapiens-0-2000-counts-TabulaDroplet-batch-scVI-8-0.001-500-0.6.sqlite", idleTimeout = 3600000)
+
+meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
+
+# cells before QC removal (mito / likely doublets)
+load('~/data/massive_integrated_eye_scRNA/cell_info_labelled.Rdata')
+
+# meta data before doublet removal
+load('~/data/massive_integrated_eye_scRNA/Mus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features2000__counts__TabulaDroplet__batch__scVI__dims8__preFilter__mindist0.001__nneighbors500.umap.Rdata')
+
+methods <- factor(c('scArches', 'bbknn','insct','magic', 'scVI','CCA', 'scanorama', 'harmony', 'fastMNN', 'combat', 'none', 'liger'), levels = c('bbknn','CCA','combat','fastMNN','harmony','insct','liger','magic','scanorama','scArches','scVI', 'none')) 
 ```
 
 
 # Introduction
 ## Many published ocular atlases
 
+The recent explosion of research using single cell transcriptome technology has led to insights in development, disease progression, etc. Some of the seminal work in the single cell transcriptomics field (Macosko et al) have used the retina. For example in the ocular community, over a dozen studies have used single cell technology to profile cell type patterns, etc. 
+
+DISCUSS RETINA DEVELOPMENT/CELL TYPE stuff
 
 ## Data not easily available for all
 
-## Some have accompanying apps
+While these groups has leveraged this new technology to [do stuff], there is a large chasm to cross the enable outside groups to use the data in new ways. Several of these papers are accompanied by reactive web apps, which allow for relatively quick checks of gene expression across cell type or cluster assignment. However these web apps have minimal to no data exploration tools and are slow to operate, especially with the larger datasets. 
 
-## But apps are generally slow and have minimal exploration tooling
+## Impossible to compare results across independent studies
+Most crucially, these paper data web portals, should they exist, are silos which only contain the single cell transcriptomes related to their study. Thus it is impossible to compare directly across datasets. When exploring a gene expression pattern, it is crucial to have reproducibility across disparate groups to enhance confidence that effect is biological as bench experiments require large investments in time. 
 
-## Cross comparisons difficult
+While lightly processed counts data is often provided, differences in both single cell technology (e.g. droplet or well based) and bioinformatic processing choices make it impractical to quickly aggregate the datasets together as differences found may be technical. 
 
-## If exploring a gene expression pattern, crucial to have reproducibility across disparate groups to enhance confidence that effect is biological
+## There is a path 
+As the raw sequence data is required to be deposited on publication, it is possible to remove the technical differences due to bioinformatic processing choices by re-processing all of the data in a unified framework, though this still requires a large amount of bioinformatic expertise and compute infrastructure. Also there still remain technical (or batch) effects due to the variety in single cell technologies available and variation in tissue handling and processing across different scientific groups. Fortunately the single cell community has recognized that removal of technical (also referred to as batch) effects is a crucial issue and have independently developed many tools. 
 
-## Single cell datasets getting larger
-Valentine Svensson figure?
-MOCA atlas (mouse 2e6 cells?)
+## The meta-atlas
 
-## Thus crucial for algorithms to be highly performant
-Our multidimensional atlas of 1e6 cells will be a useful reference dataset in:
-  - batch effect correction tools
-  - clustering algorithms
-  - cell type prediction / projection
-  - trajectory inference
+We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally applying batch correction methodology we can create a meta-atlas, which combines individual datasets into one unified (or meta-) atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we will refer to as the single cell eye in a disk or scEiaD) by benchmarking across multiple important integration parameters (integration method, number of hyper-variable genes, etc). The benchmarking system we developed uses a wide variety of metrics and we make available to all via an R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and the single cell informatic community who can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment.
+
+<!-- ## As Single cell datasets getting larger, crucial for algorithms to be highly performant -->
+<!--   - Valentine Svensson figure? -->
+<!--   - MOCA atlas (mouse 2e6 cells?) -->
+
+<!-- Our multidimensional atlas of 1e6 cells will be a useful reference dataset in: -->
+<!--   - batch effect correction tools -->
+<!--   - clustering algorithms -->
+<!--   - cell type prediction / projection -->
+<!--   - trajectory inference -->
+
+# Results
+
+## We identify `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` ocular scRNA datasets across 3 species
+
+We identified ocular single cell RNA seq (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome" and hand filtering the results to only keep normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. We identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r supTab_cap(name = 'study_cell_count', display = 'cite')`). 
+  To provide a non-ocular reference we also downloaded the raw sequence data for the Tabula Muris project. In cases where the fastq file from the SRA was not processed properly, we acquired the original bam files and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
   
-## What we did
-We have built an integrated meta-atlas that:
+```{r fig1, fig.width=13, fig.height=5, fig.cap=fig1_cap, echo=FALSE, message = FALSE}
+fig1_cap <- fig_cap(name='fig1', caption =  'a. Counts of (study) accession, published papers, and batches for each scRNA technlogy, split by organism. b. Simplified directed workflow of major steps in scEiaD creation from raw counts to gene counts, benchmarking optimal integration methods to produce batch corrected latent dimensions (LDims), then downstream analysis outputs like clustering, differential gene testing (DiffT), and 2D UMAP visualization. c. Cell type counts extracted from published studies for select cell types, split by species. Count of study accessions for each species overlaid on bar plot.')
 
-  Has a batch corrected lower dimensional space (8 dimensions) from scVI
+source('figs_and_tables/fig1.R')
+plot_grid(plot_grid(a, c, align = 'v',  axis = 'lr', ncol = 1, labels = c('','c')), b,  nrow = 1, rel_widths = c(1.1,1), labels = c('a','b'))
+```
 
-  Curated previously labelled cell types for >400,000 cells. 
+## `r cell_info_labels %>% nrow() %>% as.integer() %>% as.integer() %>% format(., big.mark=",", scientific=FALSE)` cells before quality control
 
-  Projected these onto the remaining unlabelled cells. 
+  Gene-level counts were quantified with the kallisto bustool pseudo-aligner. For the droplet-based technology data, the inflection point between empty and non-empty droplets was automatically determined using the DropletUtils barcodeRank function in R. After empty droplet removal, we had `r format((umap %>% nrow() %>% as.numeric()) - (meta_filter %>% nrow() %>% as.numeric()), big.mark=",", scientific=FALSE)` cells. We then created a Seurat v3 object, calculated the percent mitochondrial genes counts, and removed cells which had more than 10% mitochondrial reads across all gene counts. For the droplet-based data, we also removed cells which had more than 3000 unique genes detected as these are likely to be doublets. After these standard quality control steps we were left with `r format(umap %>% nrow, big.mark = ",", scientific=FALSE)` cells. 
+  
+## Extraction and curation of cell type labels
 
-  Made 77 clusters
-   - subclustered each to create XX total clusters
+  A core objective of many scRNA based studies is labeling distinct cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of hand-searching the Gene Expression Omnibus, supplemental information from the publication, web resources (if an web app was made available), and personal correspondence. After normalizing cell type names, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types. 
 
-  Pre-calculated pseudobulk differential expression testing in 9 different testing schemes:
+## Integration benchmarking of `r methods %>% length()` tools
 
-  Calculated cell phase (G1, G2)
-## Will do???
+  A key step in extracting biological information out of the unified dataset is to remove the technical effects from the data. A wide variety of tools have been designed for this function. As we were uncertain which would perform the best and it is difficult to manually assess performance we designed a R-based benchmarking system to evaluate performance (scPOP). There are two key metrics which have to be balanced in order to optimize performance: batch mixing (e.g. different studies with the same cell type should be similar) and cell type or cluster purity (where different cell types or clusters should be distinct). While these can be visually assessed by looking at marker gene expression across the 2D t-SNE or UMAP projection, it is more rigorous and scalable to quantify this process.
+  We define batch as being each biological sample. We assume each study is at least one unique sample. We also studied the metadata and methods of each study to determine if the particular study contained multiple samples. In the end we identified `r meta_filter$batch %>% table() %>% length()` batches to be integrated. 
+  The Local Simpson Index (LISI) and Average Silhouette Width (ASW) metrics from Harmony and kBET, respectively, were used to assess integration performance. We also use the Adjusted Rand Index (ARI), Normalized Mutual Information (NMI), and PCR metrics as implemented by scIB. The LISI and ASW were used to measure batch mixing (where lower is better), celltype mixing (higher is better), and cluster mixing (higher and better). NMI and ARI were used to assess the consistency of celltype to cluster assignment (where 1 is perfect correspondence between cluster and cell type). The PCR metric (higher is better) runs PCA before and after integration to assess how much variance is explained by the batch corrected dimensional space. 
+  To visualize the interplay between batch mixing and cell type distinction we plot in FIG XXXXX the batch mixing LISI score (which has been multiplied by -1) was plotted on the y-axis (higher is better) against the cell type LISI on the x-axis (higher is better). The best performer on both metrics will be in the top right corner. 
+  
+## scVI has highest integration performance
 
-Trajectory
+  To rank the integration algorithms across the various benchmarks, each score was Z scale normalized so that each score has an equal weight. The scores were then summed which allows us to rank the performance of each integration tool across the benchmarks. scVI has the strongest performance, with a sum score of SOMETHING. The next highest performers are Harmony, fastMNN, and Scanorama. 
 
-Velocity
+## Further optimization of scVI with grid search
+
+  To find the best set of parameters for integration and clustering we did a grid search across key parameters: hyper variable genes (HVG), latent dimensions, and k nearest neighbors. Using scPOP we found the optimal parameters to be 2000 HVG, 8 latent dimensions, and a resolution of 0.6 with the leiden algorithm. We also varied the UMAP projection values of nearest neighbors and minimum distance to qualitatively pick a 2D projection, selecting a minimum distance of 0.001 and 500 nearest neighbors. 
+    While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there are likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umap %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
+
+## xgboost model built to label unknown cell types
+  To further study cell type specific expression patterning we needed to label the `r format(umap %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of pre-labelled cells we decided to leverage the expert labels by building a xgboost-based machine learning model that used the half of the labeled cells as a training set (see methods for more details). The model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct the small number of mislabels in the truth set.    
+  
+  ~~ALLUVIAL PLOT FIGURE~~
+  
+## scEiaD UMAP projection blends batches and separates cell types
+  The 2D UMAP projection of the 8 scVI-calculated latent dimensional blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic population from which the retinal cell types are derived near the center of the UMAP visualization. Cones and rods, which are the photoreceptors of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP. The amacrine cells ....say more about cell type in space
+  
+## diff testing reveals....
+pseudo and haystack
+
+## Pan mouse as non-ocular reference
 
 
 # Methods
-
-## Identify ocular scRNA studies
-SRA
-EBI
-Pubmed
-Found 18 (?) studies
-
-## pan mouse as non-ocular reference
-Tabula Muris
 
 ## Quantification
 
@@ -117,44 +156,40 @@ kallisto/bustools
 
 ## Batch normalization
 Tested:
-  - scVI
-  - CCA
-  - insct
-  - combat
-  - nothing
-  - magic
-  - scanorama
-  - harmony
-  - fastMNN
-
+- scVI
+- CCA
+- insct
+- combat
+- nothing
+- magic
+- scanorama
+- harmony
+- fastMNN
+- scArches
 
 ## Grid search to pick optimal parameters
 
 Varied:
-  - number of Hyper Variable Genes (HVG): 1000, 2000,5000,1000
-  - dims: 4,6,8,10,20,30,50,100
-  - normalization: scran, seurat standard, libSize, sqrt, counts (scVI only)
-  - nneighbors (UMAP viz only)
-  - knn: 5,7,10 (clustering)
-  
+- number of Hyper Variable Genes (HVG): 1000, 2000,5000,1000
+- dims: 4,6,8,10,20,30,50,100
+- normalization: scran, seurat standard, libSize, sqrt, counts (scVI only)
+- nneighbors (UMAP viz only)
+- knn: 5,7,10 (clustering)
+
 benchmarked with:
-  - LISI
-  - ARI
-  - Silhouette
-  - PCA variance explained before/after correction
+- LISI
+- ARI
+- Silhouette
+- PCA variance explained before/after correction
 
 ## Clustering
-Louvain-jaccard from Seurat
-
-## 
-
-# Results
+Louvain-jaccard as implemented by Seurat
 
 ## pseudobulk differential expression testing
-  - celltype (published) against remaining
-  - celltype (published) pairwise against celltype (published)
-  - species specific within celltype
-  - same for celltype (projected)
-  - same for cluster
-  
+- celltype (published) against remaining
+- celltype (published) pairwise against celltype (published)
+- species specific within celltype
+- same for celltype (projected)
+- same for cluster
+
 # Conclusion
