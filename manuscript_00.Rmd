@@ -68,13 +68,15 @@ qc <- readr::read_tsv('~/data/massive_integrated_eye_scRNA/QC.tsv.gz')
 
 # Introduction
 ## Explosion of single cell transcriptomic atlases
-The  recent introduction of relatively low cost and high throughput single cell sequencing technlogy has led to an explosion of research across many fields. GIVE SOME EXAMPLES. As of 2020, over 30 million cells have been sequenced across n studies (Svennson Pachter http://www.nxn.se/single-cell-studies)
+The  recent introduction of relatively low cost and high throughput single cell sequencing technlogy has led to an explosion of research across many fields. As of 2020, over 30 million cells have been sequenced across over 1,000 studies (Svennson Pachter http://www.nxn.se/single-cell-studies). As of November 2020, the average size of each individual dataset is near 100,000 cells. Some of the seminal work in the high throughput single cell transcriptomics field (Macosko et al) have used the retina. As of late 2020, over a dozen published studies containing over a million cells have used single cell technology to profile cell type specific gene expression patterns, cell fate trajectory, tissue and cell differentiation, and disease perturbation. 
 
-## Many in the eye 
-  Some of the seminal work in the high throughput single cell transcriptomics field (Macosko et al) have used the retina. As of late 2020, over a dozen published studies have used single cell technology to profile cell type specific gene expression patterns, developmental trends, species specific differentiation, and disease alterations. 
+## Many researchers use processed count tables for methods development and hypothesis testing
 
-## Impossible to easily compare results across independent studies
-Study specific web portals, should they exist, are silos which only contain the single cell transcriptomes related to their study. There are notable efforts to create web portals (UCSC Single Cell Browser, EBI Single Cell Expression Atlas) that allow for GUI-based viewing of data for most publicly available datasets. However, these again have the shortcoming as the study-specific web portals discussed above in that you still cannot directly compare between independent studies. In these situations it is impossible to compare directly across datasets. When exploring a gene expression pattern, it is crucial to have reproducibility across disparate groups to enhance confidence that effect is biological as bench experiments require large investments in time. 
+While the gene - cell count tables are often made available in repositories like the Gene Expression Omnibus (GEO), there are no requirements to uniformly process the data. This means the count tables cannot be used in cross-study comparisons as even small differences in the computational pipeline (aligner, transcriptome reference, etc.) create study-specific effects. This issue can be addressed only by re-quantifying the data in a uniform environment. Fortunately, due to the continued development of computationally light-weight gene quantification tools into the single-cell space (kbtools, alevin-something), re-quantification does not require massive compute resources. 
+
+Unfortunately, there still remain study specific batch effects due to the variety in single cell technologies used and variation in tissue handling and processing across different scientific groups. The single cell community has recognized that removal of these technical (also referred to as batch) effects is a critical issue and have independently developed many tools. It remains unclear which tool(s) is optimal for a particular dataset. 
+
+<!-- Study specific web portals, should they exist, are silos which only contain the single cell transcriptomes related to their study. There are notable efforts to create web portals (UCSC Single Cell Browser, EBI Single Cell Expression Atlas) that allow for GUI-based viewing of data for most publicly available datasets. However, these again have the shortcoming as the study-specific web portals discussed above in that you still cannot directly compare between independent studies. In these situations it is impossible to compare directly across datasets. When exploring a gene expression pattern, it is crucial to have reproducibility across disparate groups to enhance confidence that effect is biological as bench experiments require large investments in time.  -->
 
 <!-- ## Aggregation of results to create meta-atlas important -->
 
@@ -82,26 +84,18 @@ Study specific web portals, should they exist, are silos which only contain the 
 
 <!-- While lightly processed counts data is often provided, differences in both single cell technology (e.g. droplet or well based) and bioinformatic processing choices make it impossible to simply concatenate the datasets together as differences found will likely be technical.  -->
 
-## There is a path 
-As the raw sequence data is required to be deposited on publication, it is possible to remove the technical differences due to bioinformatic processing choices by re-processing all of the data in a unified framework, though this still requires a large amount of bioinformatic expertise and compute infrastructure. Also there still remain technical (or batch) effects due to the variety in single cell technologies available and variation in tissue handling and processing across different scientific groups. Fortunately the single cell community has recognized that removal of technical (also referred to as batch) effects is a crucial issue and have independently developed many tools. The challenge is still to determine which tool works best.
-
-## scRNA datasets are rapidly increasing in size
-  - Valentine Svensson figure?
-  - http://www.nxn.se/single-cell-studies
-  - MOCA atlas (mouse 2e6 cells)
-
 ## The meta-atlas
 
-We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally applying batch correction methodology we can create a meta-atlas, which combines individual datasets into one unified (or meta-) atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we will refer to as the single cell eye in a disk or scEiaD) by benchmarking across multiple important integration parameters (integration method, number of hyper-variable genes, etc). The benchmarking system we developed uses a wide variety of metrics and we make available to all via an R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and the single cell informatic community who can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment.
+We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally using batch correction tools we can create a meta-atlas, which combines individual datasets into one unified (or meta-) atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we refer to as the single cell eye in a disk or scEiaD) by benchmarking integration outcomes across multiple important single cell RNA-seq processing parameters (integration tool, number of hyper-variable genes, clustering resolution, etc). The benchmarking system we developed uses a wide variety of metrics and we make available to all via an R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and the computational community who can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment. As we believe data re-use is a powerful and accessible means to drive forward research, we provide our meta-atlas code-base and propose general guidelines to optimally create custom meta-atlases.
 
 # Results
 
 ## We identify `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` ocular scRNA datasets across 3 species
 
-  The first step in building a meta-atlas is identifying studies to draw the data from. We identified ocular single cell RNA seq (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome" and then hand filtering the results to only keep normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. We identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r fig_cap(name = 'fig1', display = 'cite')`). 
-  To provide a non-ocular reference we also downloaded the raw sequence data for the Tabula Muris project. In cases where the fastq file from the SRA was not processed properly, we acquired the original bam files and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
+  The first step in building a meta-atlas is identifying studies to draw the data from. We identified ocular single cell RNA seq (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome" and then hand filtering the results to only keep normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. As of September 2020 we identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r fig_cap(name = 'fig1', display = 'cite')`). To provide a non-ocular reference we also downloaded the raw sequence data for the Tabula Muris project. 
+  In cases where the fastq file from the SRA was not processed properly, we acquired the original bam files (personal correspondence or the SRA) and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
 
-```{r fig1, fig.width=13, fig.height=5, fig.cap=fig1_cap, echo=FALSE, message = FALSE}
+```{r fig1, fig.width=6, fig.height=3, fig.cap=fig1_cap, echo=FALSE, message = FALSE}
 fig1_cap <- fig_cap(name='fig1', caption =  'a. Counts of (study) accession, published papers, and batches for each scRNA technlogy, split by organism. b. Simplified directed workflow of major steps in scEiaD creation from raw counts to gene counts, benchmarking optimal integration methods (SnakePOP) to produce batch corrected latent dimensions (LatentDims), then downstream analysis outputs like clustering, differential gene testing (DiffTesting), and 2D UMAP visualization. c. Cell type counts extracted from published studies for the more common retina cell types, split by species. Count of study accessions for each species overlaid on bar plot.')
 
 source('figs_and_tables/fig1.R')
@@ -118,19 +112,20 @@ plot_grid(plot_grid(a, c, align = 'v',  axis = 'lr', ncol = 1, labels = c('','c'
 
 ## Running `r methods %>% length()` tools in a Snakefile-based system
 
-  A key step in extracting biological information out of the unified dataset is to remove the technical effects from the data. A wide variety of tools have been designed for this function. As we were uncertain which would perform the best and it is difficult to manually assess performance we ran `r methods %>% length()` tools with a commonly used set of key parameters that effect integration: 2000 hyper variable genes, the louvain clustering algorithm with 7 k-nearest neighbors
+  A key step in extracting biological information out of the unified dataset is to remove the technical effects from the data. A wide variety of tools have been designed for this function. As we were uncertain which would perform the best and it is difficult to manually assess performance we ran `r methods %>% length()` tools with a commonly used set of key parameters that affect integration: 2000 hyper variable genes, 8 and 30 latent dimensions returned, and the louvain clustering algorithm with 7 k-nearest neighbors
   
   There are two key metrics which have to be balanced in order to optimize performance: batch mixing (e.g. different studies with the same cell type should be similar) and cell type or cluster purity (where different cell types or clusters should be distinct). While these can be visually assessed by looking at marker gene expression across the 2D t-SNE or UMAP projection, it is more rigorous and scalable to quantify this process.
   We define batch as being each biological sample. We assume each study is at least one unique sample. We also studied the metadata and methods of each study to determine if the particular study contained multiple samples. In the end we identified `r meta_filter$batch %>% table() %>% length()` batches to be integrated.
   
 # scPOP wraps several different methods at measuring integration performance. 
 
-  Local Simpson Index (LISI) and Average Silhouette Width (ASW) metrics from Harmony and kBET, respectively, are used as well as the Adjusted Rand Index (ARI), Normalized Mutual Information (NMI), and PCR metrics as implemented by scIB. The LISI and ASW were used to measure batch mixing (where lower is better), celltype mixing (higher is better), and cluster mixing (higher and better). NMI and ARI were used to assess the consistency of celltype to cluster assignment (where 1 is perfect correspondence between cluster and cell type). The PCR metric (higher is better) runs PCA before and after integration to assess how much variance is explained by the batch corrected dimensional space. 
+  Local Simpson Index (LISI) and Average Silhouette Width (ASW) metrics from Harmony and kBET, respectively, are used as well as the Adjusted Rand Index (ARI), Normalized Mutual Information (NMI), and PCR metrics as implemented by scIB. The LISI and ASW were used to measure batch mixing (where lower is better), cell type mixing (higher is better), and cluster mixing (higher is better). NMI and ARI were used to assess the consistency of cell type to cluster assignment (where 1 is perfect correspondence between cluster and cell type). The PCR metric (higher is better) runs PCA before and after integration to assess how much variance is explained by the batch corrected dimensional space. 
   To visualize the interplay between batch mixing and cell type distinction we plot in FIG XXXXX the batch mixing LISI score (which has been multiplied by -1) was plotted on the y-axis (higher is better) against the cell type LISI on the x-axis (higher is better). The best performer on both metrics will be in the top right corner. 
   
+
 ## scVI has highest integration performance
 
-  To rank the integration algorithms across the various benchmarks, scPOP Z scale normalizes all the metrics so that each score has an equal weight. scPOP then sums them all which allows us to rank the performance of each integration tool across the benchmarks. For users who have custom needs, the weights of each metrics can be customized to prioritize mixing or sepraration. scPOP finds that scVI has the strongest performance, with a sum score of SOMETHING. The next highest performers are Harmony, fastMNN, and Scanorama. We do not claim that these results are gegeral - rather we emphasize that for each batch correction analysis that scPOP or some similar approach be used to identify the optimal method for each dataset. 
+  To rank the integration algorithms across the various benchmarks, scPOP Z scale normalizes all the metrics so that each score has an equal weight. The scores are summed which allows us to rank the performance of each integration tool across the diverse benchmarks. For users who have custom needs, the weights of each metrics can be customized to prioritize mixing or separation. scPOP finds that for our dataset scVI has the strongest performance, with a sum score of SOMETHING. The next highest performers are Harmony, fastMNN, and Scanorama. We do not claim that these results are gegnral - rather we emphasize that for each (meta) atlas creation that scPOP or some similar approach be used to identify the optimal method for each dataset. 
 
 ## Further optimization of scVI with grid search
 
@@ -199,6 +194,14 @@ Louvain-jaccard as implemented by Seurat
 
 
 # Supplemental
+```{r supFig1, fig.width=2, fig.height=3, out.width=300, fig.cap=supFig1_cap, echo=FALSE, message = FALSE}
+supFig1_cap <- supFig_cap(name='supFig1_cap', caption =  'The left bar delineates the number of cells for each organism - technology combination. The right bar specifies the number of each cells in each post QC category. In silico doublets were identified with scrublet and DoubletDetector.')
+
+source('figs_and_tables/sup_fig1__qc_failure.R')
+supFig1_plot
+```
+
+
 ```{r supFig1, fig.width=4, fig.height=7, out.width=300, fig.cap=supFig1_cap, echo=FALSE, message = FALSE}
 supFig1_cap <- supFig_cap(name='supFig1_cap', caption =  'The left bar delineates the number of cells for each organism - technology combination. The right bar specifies the number of each cells in each post QC category. In silico doublets were identified with scrublet and DoubletDetector.')
 
@@ -206,6 +209,16 @@ source('figs_and_tables/sup_fig1__qc_failure.R')
 supFig1_plot
 ```
 
+
+```{r supFig1, fig.width=5, fig.height=5, out.width=300, fig.cap=supFig2_cap, echo=FALSE, message = FALSE}
+supFig2_cap <- supFig_cap(name='supFig2_cap', caption =  '')
+
+source('figs_and_tables/fig2__integrationPerf.R')
+cowplot::plot_grid(
+  cowplot::plot_grid(lisi + theme(legend.position="none"), silhouette, nrow = 1), 
+  cowplot::plot_grid(ari, legend, rel_widths = c(1,0.2), ncol = 2), 
+  nrow = 2)
+```
 
 ```{r supTab1, fig.width=4, fig.height=7, out.width=300, fig.cap=supTab1_cap, echo=FALSE, message = FALSE}
 supTab1_cap <- supTab_cap(name='supTab1_cap', caption =  'Counts for cell type labels. Published are the author created labels from the published datasets. Transferred area the cell labels that were transferred by a machine learning model onto the entire scEiaD dataset.')
