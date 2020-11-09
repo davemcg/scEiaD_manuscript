@@ -23,8 +23,14 @@ lisi <- perf_tabula %>%
 ari <- perf_tabula %>% 
   filter(Score == 'ARI', Group == 'CellType-Cluster', nf == 2000, dims %in% c(8, 30), knn == 7) %>%
   ggplot(aes(y=Value, x=normalization)) + geom_point(aes(color=method, shape = normalization), size = 5) +
-  cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) + ylab('ARI (higher is better)') +
+  cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) + ylab('ARI') +
   ggtitle('ARI') + theme(legend.position="none")
+
+nmi <- perf_tabula %>% 
+  filter(Score == 'NMI', Group == 'CellType-Cluster', nf == 2000, dims %in% c(8, 30), knn == 7) %>%
+  ggplot(aes(y=Value, x=normalization)) + geom_point(aes(color=method, shape = normalization), size = 5) +
+  cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) + ylab('NMI') +
+  ggtitle('NMI') + theme(legend.position="none")
 
 silhouette <- perf_tabula %>% filter(Score == 'Silhouette', nf == 2000, dims %in% c(8,30), knn == 7) %>% 
   pivot_wider(values_from = Value, names_from = c('Group')) %>% 

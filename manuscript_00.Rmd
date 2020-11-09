@@ -202,21 +202,14 @@ supFig1_plot
 ```
 
 
-```{r supFig1, fig.width=4, fig.height=7, out.width=300, fig.cap=supFig1_cap, echo=FALSE, message = FALSE}
-supFig1_cap <- supFig_cap(name='supFig1_cap', caption =  'The left bar delineates the number of cells for each organism - technology combination. The right bar specifies the number of each cells in each post QC category. In silico doublets were identified with scrublet and DoubletDetector.')
-
-source('figs_and_tables/sup_fig1__qc_failure.R')
-supFig1_plot
-```
-
 
 ```{r supFig1, fig.width=5, fig.height=5, out.width=300, fig.cap=supFig2_cap, echo=FALSE, message = FALSE}
 supFig2_cap <- supFig_cap(name='supFig2_cap', caption =  '')
 
 source('figs_and_tables/fig2__integrationPerf.R')
 cowplot::plot_grid(
-  cowplot::plot_grid(lisi + theme(legend.position="none"), silhouette, nrow = 1), 
-  cowplot::plot_grid(ari, legend, rel_widths = c(1,0.2), ncol = 2), 
+  cowplot::plot_grid(lisi + theme(legend.position="none"), silhouette, NULL, rel_widths = c(1,1,0.2), nrow = 1, labels = c('A' ,'B')), 
+  cowplot::plot_grid(ari, nmi, legend, rel_widths = c(1,1, 0.2), ncol = 3, labels = c('C', 'D')), 
   nrow = 2)
 ```
 
