@@ -14,25 +14,25 @@ perf_tabula <- perf %>% unique() %>% filter(set == 'TabulaDroplet') %>%
   filter(method != 'CCA')
 
 lisi <- perf_tabula %>% 
-  filter(Score == 'LISI', nf == 2000, dims %in% c(8,30), knn == 7) %>%
+  filter(Score == 'LISI', nf == 2000, dims %in% c(30), knn == 7) %>%
   pivot_wider(values_from = Value, names_from = c('Group')) %>% 
   ggplot(aes(y=Batch, x=-Cluster, shape = normalization)) + geom_point(aes(color=method), size = 5) +
   cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) +
   ggtitle('LISI')
 
 ari <- perf_tabula %>% 
-  filter(Score == 'ARI', Group == 'CellType-Cluster', nf == 2000, dims %in% c(8, 30), knn == 7) %>%
+  filter(Score == 'ARI', Group == 'CellType-Cluster', nf == 2000, dims %in% c(30), knn == 7) %>%
   ggplot(aes(y=Value, x=normalization)) + geom_point(aes(color=method, shape = normalization), size = 5) +
-  cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) + ylab('ARI') +
+  cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) + ylab('ARI (higher is better)') +
   ggtitle('ARI') + theme(legend.position="none")
 
 nmi <- perf_tabula %>% 
-  filter(Score == 'NMI', Group == 'CellType-Cluster', nf == 2000, dims %in% c(8, 30), knn == 7) %>%
+  filter(Score == 'NMI', Group == 'CellType-Cluster', nf == 2000, dims %in% c(30), knn == 7) %>%
   ggplot(aes(y=Value, x=normalization)) + geom_point(aes(color=method, shape = normalization), size = 5) +
   cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) + ylab('NMI') +
   ggtitle('NMI') + theme(legend.position="none")
 
-silhouette <- perf_tabula %>% filter(Score == 'Silhouette', nf == 2000, dims %in% c(8,30), knn == 7) %>% 
+silhouette <- perf_tabula %>% filter(Score == 'Silhouette', nf == 2000, dims %in% c(30), knn == 7) %>% 
   pivot_wider(values_from = Value, names_from = c('Group')) %>% 
   ggplot(aes(y=-Batch, x=Cluster, shape = normalization)) + geom_point(aes(color=method), size = 5) +
   cowplot::theme_cowplot() + scale_color_manual(values = pals::alphabet() %>% unname()) +
@@ -44,7 +44,7 @@ legend <- get_legend(
 )
 
 zscore_tabula <- perf_tabula %>% 
-  filter(nf == 2000, dims %in% c(8,30), knn == 7) %>% 
+  filter(nf == 2000, dims %in% c(30), knn == 7) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   mutate(sumZScale = 
            -scale(LISI_CellType)[,1] +
@@ -65,11 +65,13 @@ zscore_tabula <- perf_tabula %>%
   filter(!is.na(clusterN))
 
 zscore_sum_all_methods <- zscore_tabula  %>% 
+  mutate(normalization = case_when(method == 'scArches' ~ 'standard',
+                                   TRUE ~ normalization)) %>% 
   arrange(-sumZScale) %>% 
   ggplot(aes(x=method, y = sumZScale, shape = normalization, group = dims)) + 
   geom_point(aes(color=method), size = 4, position = position_dodge(width = 1)) +
   cowplot::theme_cowplot() + 
-  scale_color_manual(values = pals::alphabet() %>% unname()) + 
+  scale_color_manual(values = pals::alphabet() %>% unname(), guide = FALSE) + 
   coord_flip() 
 
 
@@ -92,7 +94,15 @@ zscore_droplet_scVI_optimize <- perf_tabula %>%
   ) %>% 
   left_join(cluster_stats) %>% 
   filter(!is.na(clusterN)) %>% 
-  filter(clusterMedian < 5000) %>% arrange(-sumZScale)
+  filter(knn == 0.6, method == 'scVI') %>% 
+  filter(!is.na(clusterN)) %>% 
+  mutate(nf = as.factor(nf),
+         `scVI latent dims` = as.factor(dims)) %>% 
+  ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`)) + 
+  geom_point(size = 4) +
+  scale_color_manual(values = pals::brewer.set1(n = 10) %>% unname()) +
+  cowplot::theme_cowplot() +
+  ylab('Number of\nHVGs')
 
 zscore_onlyWell <- perf_well %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
