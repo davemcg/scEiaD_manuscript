@@ -1,5 +1,5 @@
 ---
-title: 'An Million Transcriptome Ocular Meta-Atlas for Discovery and Development'
+title: 'Building the Million Transcriptome Ocular Meta-Atlas'
 author:
   - Vinay Swamy:
       institute: bg
@@ -163,13 +163,24 @@ scPOP finds that for our dataset scVI has the strongest performance, with a sum 
 
 To find the best set of parameters for integration and clustering we did a grid search across key parameters: hyper variable genes (HVG), latent dimensions, and k nearest neighbors. Using scPOP we found the optimal parameters to be 2000 HVG, 8 latent dimensions, and a resolution of 0.6 with the leiden algorithm implemented by XXXXX (`r fig_cap(name = 'figBenchmark', display = 'cite')`d). We also varied the UMAP projection values of nearest neighbors and minimum distance to qualitatively pick a 2D projection, selecting a minimum distance of 0.001 and 500 nearest neighbors. 
 
-## move this to the methods
-While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there are likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
+
 
 ## xgboost model built to label unknown cell types
-To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of pre-labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we leveraged the expert labels by building a xgboost-based machine learning model that used the half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct a small number of probable mislabels in the truth set.    
+To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of pre-labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we leveraged the expert labels by building a xgboost-based machine learning model that used half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct a small number of probable mislabels in the truth set (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a).
 
-~~ALLUVIAL PLOT AND REF UMAP FIGURE~~
+## ML model reveals certain retina cell types have more stable community consensus IDs
+
+Certain cell types (rod/cones/MG?) can be very reliably predicted
+
+The RPC/neurogenic pops arise from one group and a lower number of studies and aren't predicted as reliably
+
+```{r figXGboost_umap, fig.width=13, fig.height=20, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
+figXGboost_umap_cap <- fig_cap(name='figXGboost_umap', caption =  '')
+
+#source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
+plot_grid(ct_alluvial, labels = c('a'))
+
+```
 
 ## scEiaD UMAP projection blends batches and separates cell types
 The 2D UMAP projection of the 8 scVI-calculated latent dimensional blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic population from which the retinal cell types are derived near the center of the UMAP visualization. Cones and rods, which are the photoreceptors of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP. The amacrine cells ....say more about cell type in space
@@ -216,6 +227,11 @@ benchmarked with:
 
 ## Clustering
 Louvain-jaccard as implemented by Seurat
+
+Leiden by ? in anndata
+
+## Multi-step doublet removal
+While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there are likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
 
 ## pseudobulk differential expression testing
 - celltype (published) against remaining
