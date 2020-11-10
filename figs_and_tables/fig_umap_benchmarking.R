@@ -12,6 +12,8 @@ umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsi
   umapFig <- umap %>% 
     #rename(Stage = integration_group) %>% 
     mutate(CellType = gsub('Rod Bipolar Cells', 'Bipolar Cells', !!as.symbol(celltype_col))) %>% 
+    
+    filter(!CellType %in% c('RPE', 'Vein', 'Smooth Muscle Cell', 'Schwann','Macrophage','Mast')) %>% 
     filter(!is.na(CellType), 
            !is.na(study_accession), 
            !CellType %in% c('Doublet', 'Doublets'),
@@ -22,7 +24,7 @@ umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsi
   # attach colors to cell types
   cell_types <- umapFig %>% 
     pull(CellType) %>% unique() %>% sort()
-  type_val <- setNames(c(pals::alphabet(), pals::alphabet2())[1:length(cell_types)], cell_types)
+  type_val <- setNames(c(pals::brewer.set2(8),pals::alphabet())[1:length(cell_types)], cell_types)
   type_col <- scale_colour_manual(values = type_val)
   type_fill <- scale_fill_manual(values = type_val)
   # cell type known
