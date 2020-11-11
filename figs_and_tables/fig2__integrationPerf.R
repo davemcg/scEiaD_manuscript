@@ -10,8 +10,7 @@ perf_well <- perf %>% unique() %>% filter(set == 'onlyWELL') %>%
 
 perf_tabula <- perf %>% unique() %>% filter(set == 'TabulaDroplet') %>% 
   select(Score, Group, Value, set, dims:normalization) %>% 
-  filter(Score %in% c('LISI','Silhouette', 'ARI', 'PCR', 'NMI')) %>% 
-  filter(method != 'CCA')
+  filter(Score %in% c('LISI','Silhouette', 'ARI', 'PCR', 'NMI')) 
 
 lisi <- perf_tabula %>% 
   filter(Score == 'LISI', nf == 2000, dims %in% c(30), knn == 7) %>%
@@ -44,7 +43,7 @@ legend <- get_legend(
 )
 
 zscore_tabula <- perf_tabula %>% 
-  filter(nf == 2000, dims %in% c(30), knn == 7) %>% 
+  filter(nf == 2000, dims %in% c(8), knn == 7) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   mutate(sumZScale = 
            -scale(LISI_CellType)[,1] +
