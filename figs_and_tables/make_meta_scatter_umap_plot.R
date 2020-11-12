@@ -140,7 +140,7 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
                                         pixels=c(1750,1750),
                                         interpolate=FALSE) +
                        #geom_point(data=data.frame(x=double(0)), aes(x,x,color=x))  +
-                       geom_point(data=color_data, aes(x,x,color=value)) +
+                       geom_point(data=color_data, aes(x,x,color=value), alpha = 0) +
                        scale_colour_manual(name= meta_column %>% gsub('_',' (', .) %>% gsub('idct$',')',.),
                                            values = color_list) +
                        theme_cowplot() +

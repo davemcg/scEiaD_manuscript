@@ -173,13 +173,13 @@ To find the best set of parameters for integration and clustering we did a grid 
 To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of expert labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we built a xgboost-based machine learning model that used half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct a small number of probable mislabels in the truth set (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). 
 
 ## ML cell type predictor has high accuracy across most cell types
-The precision recall (PR) curve visualizes the ability of the model to precisely label known cells at a given confidence. The area under the PR curve (AUC) summarizes the effectiveness of the model across different cell types, with 1 being the highest performance. The xgboost model can predict rods, bipolar cells, and Muller glia with near perfect performance (`r fig_cap(name = 'supFig_PR', display = 'cite')`). Most of the remaining cell types can be predicted with an AUC of well over 0.9. The cell types with the that are the most challenging for the ML to predict are the artery, choriocapillaris, and vein, which are next most often labelled as endothelial cells. This is a unsurprising results as artery, choriocapillaris, and vein are constructed from endothelial cells. The ML model also performs under 0.9 for predicting the neurogenic cell type label; however the most next common label that is predicts are the highly related retinal progenitor populations (RPCs) (`r supTab_cap(name = 'supTab_CTmislabels', display = 'cite')`). Overall, our xgboost based ML model shows strong accuracy across the major cell types of the retina. 
+The precision recall (PR) curve visualizes the ability of the model to precisely label known cells at a given confidence. The area under the PR curve (AUC) summarizes the effectiveness of the model across different cell types, with 1 being the highest performance. The xgboost model can predict rods, bipolar cells, and Muller glia with near perfect performance (`r fig_cap(name = 'supFig_PR', display = 'cite')`). Most of the remaining cell types can be predicted with an AUC of well over 0.9. The cell types  that were the most challenging for the model to predict were the artery, choriocapillaris, and vein. Artery, choriocapillaris, and vein are constructed from endothelial cells. Indeed for all three of these, endothelial was the second most common label. The ML model also performs under 0.9 for predicting the neurogenic cell type label; however the most next common label that is predicts are the highly related retinal progenitor populations (RPCs) (`r supTab_cap(name = 'supTab_CTmislabels', display = 'cite')`). Overall, our xgboost based ML model shows strong accuracy across the major cell types of the retina. 
 
 ## Certain retina cell types have more stable community consensus IDs
 
 With the wide diversity of the scEiaD we can get a sense on how consistent the retina community is at labelling the major cell types of the retina. By calculating the AUC against each individual cell type and study, we can see which cell types are consistently labeled correctly across most (`r fig_cap(name = 'supFig_PR_cap', display = 'cite')`). Most studies show very similar performance with our ML model. The study with the consistently worse correspondence between published and predicted label is Macoksko et al; this study is notable as it was the first demonstration of the droplet based scRNA technique.  
 
-```{r figXGboost_umap, fig.width=8, fig.height=20, out.width=300, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
+```{r figXGboost_umap, fig.width=8, fig.height=13, out.width=600, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
 figXGboost_umap_cap <- fig_cap(name='figXGboost_umap', caption =  '')
 
 source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
@@ -229,11 +229,10 @@ plot_grid(ct_alluvial,
 
 ## ML cell type labels allow for unprecedented biological in cell types
 
-## scEiaD UMAP projection blends batches and separates cell types
-The 2D UMAP projection of the 8 scVI-calculated latent dimensional blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic population from which the retinal cell types are derived near the center of the UMAP visualization. Cones and rods, which are the photoreceptors of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP. The amacrine cells ....say more about cell type in space
+## The scVI-based scEiaD UMAP projection blends batches and separates cell types
+The 2D UMAP projection of the scVI-calculated batch corrected 8 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptors, cones and rods, of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP space. The amacrine cells ....say more about cell type in space
 
-## diff testing reveals....
-pseudo and (haystack <- save for next paper?)
+## Massive pseudbulk differential testing leverages high biological diversity
 
 ## Pan mouse as non-ocular reference
 
@@ -329,7 +328,7 @@ pr_split_curves
 supTab_AUCxgboost_cap <- supTab_cap(name='supTab_AUCxgboost', caption =  'TEXT')
 
 #source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
-fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 6), size = 8, part = 'all')
+fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 3), size = 8, part = 'all')
 ```
 
 ```{r supTab_CTmislabels, fig.width=8, fig.height=14, out.width=300, fig.cap=supTab_CTmislabels_cap, echo=FALSE, message = FALSE}
@@ -350,7 +349,7 @@ fontsize(predictions %>%
            filter(Ratio > 0.05) %>% 
            filter(!grepl('Doubl|Periocu', TrueCellType)) %>% 
            flextable() %>% 
-           width(width = 6), 
+           width(width = 3), 
          size = 8, 
          part = 'all')
 ```
