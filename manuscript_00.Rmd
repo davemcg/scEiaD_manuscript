@@ -30,7 +30,7 @@ abstract: "The development of highly scalable single cell transcriptome technolo
 keywords: "RNA-seq, retina, RPE, ocular, eye, Snakemake, singlecell, scRNA, single-cell, singlecell, scPOP, R"
 ---
 
-```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
+```{r Setup, message=FALSE, warning=FALSE, include=FALSE}
 #knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
 knitr::opts_chunk$set(out.width = '100%', dpi=300)
 library(tidyverse)
@@ -43,6 +43,8 @@ library(captioner)
 library(pool)
 library(RSQLite)
 library(formattable)
+library(ggalluvial)
+library(scattermore)
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -52,7 +54,11 @@ supTab_cap <- captioner("Supplemental Table")
 scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/massive_integrated_eye_scRNA/MOARTABLES__anthology_limmaFALSE___Mus_musculus_Macaca_fascicularis_Homo_sapiens-0-2000-counts-TabulaDroplet-batch-scVI-8-0.001-500-0.6.sqlite", idleTimeout = 3600000)
 
 meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
-
+meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
+                                                                   CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
+                                                                   CellType_predict == 'RPC' ~ 'RPCs',
+                                                                   CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
+                                                                   TRUE ~ CellType_predict)) 
 # cells before QC removal (mito / likely doublets)
 load('~/data/massive_integrated_eye_scRNA/cell_info_labelled.Rdata')
 
@@ -110,7 +116,7 @@ Gene-level counts were quantified with the kallisto bustool pseudo-aligner for b
 
 ## Extraction and curation of cell type labels
 
-A core objective of many scRNA based studies is labeling distinct cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of hand-searching the Gene Expression Omnibus, supplemental information from the publication, web resources (if an web app was made available), and personal correspondence. After normalizing cell type names, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types (`r supTab_cap(name = 'supTab1', display = 'cite')`). 
+A core objective of many scRNA based studies is labeling distinct cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of hand-searching the Gene Expression Omnibus, supplemental information from the publication, web resources (if an web app was made available), and personal correspondence. After normalizing cell type names, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types (`r supTab_cap(name = 'supTab1_CTcounts', display = 'cite')`). 
 
 ## Running `r methods %>% length()` tools in a Snakefile-based system
 
@@ -128,12 +134,12 @@ To visualize the interplay between batch mixing and cell type distinction we plo
 
 ## scPOP reveals different priorities across the different batch integration methods
 
-On one extreme we have combat, which merges together different batches very well, but also mixes together the distinct cell types (`r fig_cap(name = 'figBenchmark', display = 'cite')`a). The other extreme is running the pipeline without any batch integration method, where you see very distinct groups of cells, but each study also is a distinct group in the 2D UMAP space (`r fig_cap(name = 'figBenchmark', display = 'cite')`b). In this dataset we see that like combat, Harmony is weighed more towards batch mixing then cluster and cell type purity. Scanorama, fastMNN, and bbknn are more weighed to cleanly separate the clusters. With out scEiaD insct, scArches, and magic do not perform particularly well in batch mixing or cluster purity. 
+On one extreme we have combat, which merges together different batches very well, but also mixes together the distinct cell types (`r fig_cap(name = 'figBenchmark', display = 'cite')`a). The other extreme is running the pipeline without any batch integration method, where you see very distinct groups of cells, but each study also is a distinct group in the 2D UMAP space (`r fig_cap(name = 'figBenchmark', display = 'cite')`b). In this dataset we see that like combat, Harmony  and CCA is weighed more towards batch mixing then cluster and cell type purity. Scanorama, fastMNN, and bbknn are more weighed to cleanly separate the clusters. With our scEiaD meta-atlas insct, scArches, and magic do not perform particularly well in batch mixing or cluster purity. 
 
 ## Different normalization methods alter integration performance
 
 https://www.frontiersin.org/articles/10.3389/fgene.2020.00041/full
-Another substantial area of uncertainty is expression normalization. A popular method (which we call "standard") that Seurat and anndata use by default is log normalization where the raw counts and divided by the sum counts for the cell, multiplied by a scaling factor, then log transformed. This helps make the data more normal in the distribution pattern, which is an assumption that some algorithms require. The scran normalization method groups cells into pools and normalizes across the pool summed counts instead of the individual cell counts. We also use the relatively simple square root (sqrt) normalization which replaces the log transformation with a square root. Library size (libSize) normalization omits the sqrt or log transformation. Finally some methods like scVI directly use the raw counts data for modelling the data. 
+Another substantial area of uncertainty is expression normalization. A popular approach (which we call "standard") that Seurat and anndata use by default is to, per cell, divid the counts by the sum counts for the cell, multiply by a scaling factor, then log transform. This helps make the data more normal, which is an assumption that some algorithms require. In contrast, the scran normalization method groups cells into pools and normalizes across the pool summed counts instead of the individual cell counts. We also use the relatively simple square root (sqrt) normalization which replaces the log transformation with a square root. Library size (libSize) normalization omits the sqrt or log transformation. Finally some methods like scVI directly use the raw counts data for modeling the data. 
 
 We see in the across the sumZScale metric, which we define as sumZScale = zscale(PCR) + zscale(LISI batch) + zscale(LISI cluster) + zscale(LISI cell type) + zscale(silhouette batch) + zscale(silhouette cluster) + zscale(silhouette cell type) + zscale(NMI) + zscale(ARI) that scVI overall performs best. As expected the libSize normalization which omits the log or square root scaling generally performs the worst (`r fig_cap(name = 'figBenchmark', display = 'cite')`c). We see that the remaining normalization approaches alters the batch correction performance, though the exact outcome differs across the different methods.  For users who have custom needs, the weights of each metrics can be customized in scPOP to prioritize batch mixing or cluster/cell type separation.
 
@@ -163,24 +169,65 @@ scPOP finds that for our dataset scVI has the strongest performance, with a sum 
 
 To find the best set of parameters for integration and clustering we did a grid search across key parameters: hyper variable genes (HVG), latent dimensions, and k nearest neighbors. Using scPOP we found the optimal parameters to be 2000 HVG, 8 latent dimensions, and a resolution of 0.6 with the leiden algorithm implemented by XXXXX (`r fig_cap(name = 'figBenchmark', display = 'cite')`d). We also varied the UMAP projection values of nearest neighbors and minimum distance to qualitatively pick a 2D projection, selecting a minimum distance of 0.001 and 500 nearest neighbors. 
 
+## xgboost ML model built to label unknown cell types
+To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of expert labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we built a xgboost-based machine learning model that used half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct a small number of probable mislabels in the truth set (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). 
 
+## ML cell type predictor has high accuracy across most cell types
+The precision recall (PR) curve visualizes the ability of the model to precisely label known cells at a given confidence. The area under the PR curve (AUC) summarizes the effectiveness of the model across different cell types, with 1 being the highest performance. The xgboost model can predict rods, bipolar cells, and Muller glia with near perfect performance (`r fig_cap(name = 'supFig_PR', display = 'cite')`). Most of the remaining cell types can be predicted with an AUC of well over 0.9. The cell types with the that are the most challenging for the ML to predict are the artery, choriocapillaris, and vein, which are next most often labelled as endothelial cells. This is a unsurprising results as artery, choriocapillaris, and vein are constructed from endothelial cells. The ML model also performs under 0.9 for predicting the neurogenic cell type label; however the most next common label that is predicts are the highly related retinal progenitor populations (RPCs) (`r supTab_cap(name = 'supTab_CTmislabels', display = 'cite')`). Overall, our xgboost based ML model shows strong accuracy across the major cell types of the retina. 
 
-## xgboost model built to label unknown cell types
-To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of pre-labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we leveraged the expert labels by building a xgboost-based machine learning model that used half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct a small number of probable mislabels in the truth set (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a).
+## Certain retina cell types have more stable community consensus IDs
 
-## ML model reveals certain retina cell types have more stable community consensus IDs
+With the wide diversity of the scEiaD we can get a sense on how consistent the retina community is at labelling the major cell types of the retina. By calculating the AUC against each individual cell type and study, we can see which cell types are consistently labeled correctly across most (`r fig_cap(name = 'supFig_PR_cap', display = 'cite')`). Most studies show very similar performance with our ML model. The study with the consistently worse correspondence between published and predicted label is Macoksko et al; this study is notable as it was the first demonstration of the droplet based scRNA technique.  
 
-Certain cell types (rod/cones/MG?) can be very reliably predicted
-
-The RPC/neurogenic pops arise from one group and a lower number of studies and aren't predicted as reliably
-
-```{r figXGboost_umap, fig.width=13, fig.height=20, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
+```{r figXGboost_umap, fig.width=8, fig.height=20, out.width=300, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
 figXGboost_umap_cap <- fig_cap(name='figXGboost_umap', caption =  '')
 
-#source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
-plot_grid(ct_alluvial, labels = c('a'))
+source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
+source('figs_and_tables/make_meta_scatter_umap_plot.R')
+input <- list()
+input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_meta']] <- 1
+input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+input[['meta_column_transform']] <- 'None'
+input[['label_toggle']] <- 2
+#input[['meta_filter_cat']] <- 'CellType_predict'
+#input[['meta_filter_on']] <- 'Bipolar Cells'
+ctp <- make_meta_scatter_umap_plot(input, mf, meta_filter,
+                                   celltype_predict_labels,
+                                   celltype_labels,
+                                   tabulamuris_predict_labels,
+                                   cluster_labels,
+                                   cat_to_color_df
+)
+
+input <- list()
+input[['meta_column']] <- 'organism'
+input[['pt_size_meta']] <- 1
+input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+input[['meta_column_transform']] <- 'None'
+#input[['meta_filter_cat']] <- 'CellType_predict'
+#input[['meta_filter_on']] <- 'Bipolar Cells'
+org <- make_meta_scatter_umap_plot(input, mf, meta_filter,
+                                   celltype_predict_labels,
+                                   celltype_labels,
+                                   tabulamuris_predict_labels,
+                                   cluster_labels,
+                                   cat_to_color_df
+)
+plot_grid(ct_alluvial, 
+          plot_grid(ctp$plot, 
+                    ctp$plot + theme(legend.position = "none") + facet_wrap(~CellType_predict),
+                    org$plot + facet_wrap(~organism) + theme(legend.position = "none"), 
+                    ncol = 1,
+                    labels = c('b', 'c', 'd'),
+                    rel_heights = c(1,1,0.5)), 
+          rel_widths = c(0.2,1), 
+          labels = c('a'))
+
 
 ```
+
+## ML cell type labels allow for unprecedented biological in cell types
 
 ## scEiaD UMAP projection blends batches and separates cell types
 The 2D UMAP projection of the 8 scVI-calculated latent dimensional blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic population from which the retinal cell types are derived near the center of the UMAP visualization. Cones and rods, which are the photoreceptors of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP. The amacrine cells ....say more about cell type in space
@@ -253,27 +300,59 @@ supFig1_plot
 
 
 
-```{r supFig_benchmark, fig.width=8, fig.height=8, out.width=300, fig.cap=supFig_benchmark_cap, echo=FALSE, message = FALSE}
+```{r supFig_benchmark, fig.width=12, fig.height=8, out.width=300, fig.cap=supFig_benchmark_cap, echo=FALSE, message = FALSE}
 supFig_benchmark_cap <- supFig_cap(name='supFig_benchmark', caption =  'Performance of the various batch correction tools across various benchmarking metrics. For the LISI and Silhouette plots in A, B higher means better batch mixing and further to the right means better cluster purity. For the ARI and NMI metrics (which reflects how well cluster matches with cell type) in C, D, higher means a better score.')
 
 source('figs_and_tables/fig2__integrationPerf.R')
 cowplot::plot_grid(
-  cowplot::plot_grid(lisi + theme(legend.position="none"), silhouette, NULL, rel_widths = c(1,1,0.2), nrow = 1, labels = c('A' ,'B')), 
-  cowplot::plot_grid(ari, nmi, legend, rel_widths = c(1,1, 0.2), ncol = 3, labels = c('C', 'D')), 
+  cowplot::plot_grid(lisi + theme(legend.position="none"), silhouette, NULL, rel_widths = c(1,1,0.2), nrow = 1, labels = c('a' ,'b')), 
+  cowplot::plot_grid(ari, nmi, pcr, legend, rel_widths = c(1,1, 1, 0.2), ncol = 4, labels = c('c', 'd', 'e')), 
   nrow = 2)
 ```
 
-```{r supTab1, fig.width=8, fig.height=14, out.width=300, fig.cap=supTab1_cap, echo=FALSE, message = FALSE}
-supTab1_cap <- supTab_cap(name='supTab1_cap', caption =  'Counts for cell type labels. Published are the author created labels from the published datasets. Transferred area the cell labels that were transferred by a machine learning model onto the entire scEiaD dataset.')
+```{r supTab1_CTcounts, fig.width=8, fig.height=14, out.width=300, fig.cap=supTab1_CTcounts_cap, echo=FALSE, message = FALSE}
+supTab1_CTcounts_cap <- supTab_cap(name='supTab1_CTcounts_cap', caption =  'Counts for cell type labels. Published are the author created labels from the published datasets. Transferred area the cell labels that were transferred by a machine learning model onto the entire scEiaD dataset.')
 
 source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
 fontsize(ctTable, size = 8, part = 'all')
 ```
 
 
-```{r supTab_benchmark, fig.width=8, fig.height=14, out.width=300, fig.cap=supTab1_cap, echo=FALSE, message = FALSE}
-supTab_benchmark_cap <- supTab_cap(name='supTab_benchmark', caption =  'Counts for cell type labels. Published are the author created labels from the published datasets. Transferred area the cell labels that were transferred by a machine learning model onto the entire scEiaD dataset.')
+```{r supFig_PR, fig.width=12, fig.height=10,  fig.cap=supFig_PR_cap, echo=FALSE, message = FALSE}
+supFig_PR_cap <- supFig_cap(name='supFig_PR', caption =  '')
 
-source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
-fontsize(ctTable, size = 8, part = 'all')
+source('figs_and_tables/sup_fig__xgboost_PR.R')
+pr_split_curves
 ```
+
+```{r supTab_AUCxgboost, fig.width=14,  fig.cap=supTab_AUCxgboost_cap, echo=FALSE, message = FALSE}
+supTab_AUCxgboost_cap <- supTab_cap(name='supTab_AUCxgboost', caption =  'TEXT')
+
+#source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
+fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 6), size = 8, part = 'all')
+```
+
+```{r supTab_CTmislabels, fig.width=8, fig.height=14, out.width=300, fig.cap=supTab_CTmislabels_cap, echo=FALSE, message = FALSE}
+
+supTab_CTmislabels_cap <- supTab_cap(name='supTab_CTmislabels', caption =  'TEXT2')
+
+#source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
+fontsize(predictions %>%  
+           mutate(max_pred_prob = rowMaxs(.[,-(31:ncol(predictions))] %>% as.matrix )) %>% 
+           select(-cell_type_id) %>% 
+           rename(PredCellType = CellType) %>% 
+           inner_join(umapRef %>% select(Barcode, TrueCellType = CellType)) %>% 
+           filter(!is.na(TrueCellType)) %>% 
+           mutate(pred_correct  = ifelse(PredCellType == TrueCellType, 'Correct', 'incorrect')) %>% 
+           group_by(PredCellType, TrueCellType) %>% 
+           summarise(Count = n()) %>% 
+           mutate(Ratio  = round(Count / sum(Count),2 )) %>% 
+           filter(Ratio > 0.05) %>% 
+           filter(!grepl('Doubl|Periocu', TrueCellType)) %>% 
+           flextable() %>% 
+           width(width = 6), 
+         size = 8, 
+         part = 'all')
+```
+
+

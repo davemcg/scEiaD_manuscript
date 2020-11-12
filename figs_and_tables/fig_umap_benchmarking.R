@@ -8,6 +8,9 @@ umapCombat <- umap
 
 umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsize = 2){
   celltype_col <- 'CellType' 
+  if (color_against == 'CellType_predict' ){
+    umap$CellType = umap$CellType_predict
+  }
   # filter
   umapFig <- umap %>% 
     #rename(Stage = integration_group) %>% 
@@ -28,7 +31,7 @@ umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsi
   type_col <- scale_colour_manual(values = type_val)
   type_fill <- scale_fill_manual(values = type_val)
   # cell type known
-  if (color_against == 'CellType'){
+  if (color_against == 'CellType' | color_against == 'CellType_predict'){
     umapFig %>% 
       ggplot() + 
       geom_scattermore(aes(x=umapFig[,paste0(red,'_1')] %>% pull(1), 
