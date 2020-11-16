@@ -45,6 +45,9 @@ library(RSQLite)
 library(formattable)
 library(ggalluvial)
 library(scattermore)
+library(grid)
+library(ComplexHeatmap)
+library(viridis)
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -143,7 +146,7 @@ Another substantial area of uncertainty is expression normalization. A popular a
 
 We see in the across the sumZScale metric, which we define as sumZScale = zscale(PCR) + zscale(LISI batch) + zscale(LISI cluster) + zscale(LISI cell type) + zscale(silhouette batch) + zscale(silhouette cluster) + zscale(silhouette cell type) + zscale(NMI) + zscale(ARI) that scVI overall performs best. As expected the libSize normalization which omits the log or square root scaling generally performs the worst (`r fig_cap(name = 'figBenchmark', display = 'cite')`c). We see that the remaining normalization approaches alters the batch correction performance, though the exact outcome differs across the different methods.  For users who have custom needs, the weights of each metrics can be customized in scPOP to prioritize batch mixing or cluster/cell type separation.
 
-```{r figBenchmark, fig.width=13, fig.height=8, fig.cap=figBenchmark_cap, echo=FALSE, message = FALSE}
+```{r figBenchmark, fig.width=8, fig.height=8, fig.cap=figBenchmark_cap, echo=FALSE, message = FALSE}
 figBenchmark_cap <- fig_cap(name='figBenchmark', caption =  'a. Example of a method (combat) which has a high level of batch blending, but poor separation of cell types (colored by cell type). b. no batch correction cleanly separates cell types but does not mix batches (colored by study). c. sumZScale (higher is better) for each method across a variety of data normalizations. All methods shown here use 2000 HVG, louvain clustering, and 8 latent dimensions d. Optimal parameters for scVI methods across 1000 to 10000 HVGs and 4 to 100 latent dimensions.')
 
 source('figs_and_tables/fig_umap_benchmarking.R')
@@ -161,6 +164,7 @@ plot_grid(
   rel_heights = c(1, 0.4)
 )
 ```
+
 ## scVI has highest integration performance
 
 scPOP finds that for our dataset scVI has the strongest performance, with a sum score of SOMETHING. The next highest performers are fastMNN, harmony, and scanorama. We do not claim that these results are general - rather we emphasize that for each (meta) atlas creation that scPOP or some similar unbiased approach where a range of several key parameters (e.g. HVG number) are tested in a quantitative framework. 
@@ -179,7 +183,7 @@ The precision recall (PR) curve visualizes the ability of the model to precisely
 
 With the wide diversity of the scEiaD we can get a sense on how consistent the retina community is at labelling the major cell types of the retina. By calculating the AUC against each individual cell type and study, we can see which cell types are consistently labeled correctly across most (`r fig_cap(name = 'supFig_PR_cap', display = 'cite')`). Most studies show very similar performance with our ML model. The study with the consistently worse correspondence between published and predicted label is Macoksko et al; this study is notable as it was the first demonstration of the droplet based scRNA technique.  
 
-```{r figXGboost_umap, fig.width=8, fig.height=13, out.width=600, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
+```{r figXGboost_umap, fig.width=18, fig.height=13, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
 figXGboost_umap_cap <- fig_cap(name='figXGboost_umap', caption =  '')
 
 source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
@@ -201,6 +205,21 @@ ctp <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 )
 
 input <- list()
+input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_meta']] <- 3
+input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+input[['meta_column_transform']] <- 'None'
+#input[['meta_filter_cat']] <- 'CellType_predict'
+#input[['meta_filter_on']] <- 'Bipolar Cells'
+ctp2 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
+                                   celltype_predict_labels,
+                                   celltype_labels,
+                                   tabulamuris_predict_labels,
+                                   cluster_labels,
+                                   cat_to_color_df
+)
+
+input <- list()
 input[['meta_column']] <- 'organism'
 input[['pt_size_meta']] <- 1
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
@@ -214,28 +233,28 @@ org <- make_meta_scatter_umap_plot(input, mf, meta_filter,
                                    cluster_labels,
                                    cat_to_color_df
 )
-plot_grid(ct_alluvial, 
-          plot_grid(ctp$plot, 
-                    ctp$plot + theme(legend.position = "none") + facet_wrap(~CellType_predict),
-                    org$plot + facet_wrap(~organism) + theme(legend.position = "none"), 
-                    ncol = 1,
-                    labels = c('b', 'c', 'd'),
-                    rel_heights = c(1,1,0.5)), 
-          rel_widths = c(0.2,1), 
-          labels = c('a'))
-
+plot_grid(grid.grabExpr(draw(ct_confusion)), 
+          ctp$plot + theme(legend.position = "none"), 
+          ctp2$plot + theme(legend.position = "none") + facet_wrap(~CellType_predict),
+          org$plot + facet_wrap(~organism) + theme(legend.position = "none"), 
+          ncol = 2,
+          labels = c('a', 'b', 'c', 'd'),
+          rel_heights = c(1,0.8)) 
 
 ```
 
-## ML cell type labels allow for unprecedented biological in cell types
+## ML cell type labels allow for high diversity in studies for each cell type
 
 ## The scVI-based scEiaD UMAP projection blends batches and separates cell types
-The 2D UMAP projection of the scVI-calculated batch corrected 8 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptors, cones and rods, of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP space. The amacrine cells ....say more about cell type in space
+The 2D UMAP projection of the scVI-calculated batch corrected 8 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptors (cones and rods) of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP space. The amacrine cells ....say more about cell type in space
 
-## Massive pseudbulk differential testing leverages high biological diversity
+## Pseudobulk differential testing leverages high biological diversity
+
+Discuss
 
 ## Pan mouse as non-ocular reference
 
+V. briefly discuss
 
 # Methods
 
@@ -268,13 +287,12 @@ Varied:
 benchmarked with:
 - LISI
 - ARI
+- NMI
 - Silhouette
 - PCA variance explained before/after correction
 
 ## Clustering
-Louvain-jaccard as implemented by Seurat
-
-Leiden by ? in anndata
+Louvain-jaccard as implemented by Seurat and leiden (implemented by PARC)
 
 ## Multi-step doublet removal
 While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there are likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
@@ -324,14 +342,14 @@ source('figs_and_tables/sup_fig__xgboost_PR.R')
 pr_split_curves
 ```
 
-```{r supTab_AUCxgboost, fig.width=14,  fig.cap=supTab_AUCxgboost_cap, echo=FALSE, message = FALSE}
+```{r supTab_AUCxgboost, fig.cap=supTab_AUCxgboost_cap, echo=FALSE, message = FALSE}
 supTab_AUCxgboost_cap <- supTab_cap(name='supTab_AUCxgboost', caption =  'TEXT')
 
 #source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
 fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 3), size = 8, part = 'all')
 ```
 
-```{r supTab_CTmislabels, fig.width=8, fig.height=14, out.width=300, fig.cap=supTab_CTmislabels_cap, echo=FALSE, message = FALSE}
+```{r supTab_CTmislabels, fig.cap=supTab_CTmislabels_cap, echo=FALSE, message = FALSE}
 
 supTab_CTmislabels_cap <- supTab_cap(name='supTab_CTmislabels', caption =  'TEXT2')
 
@@ -349,7 +367,7 @@ fontsize(predictions %>%
            filter(Ratio > 0.05) %>% 
            filter(!grepl('Doubl|Periocu', TrueCellType)) %>% 
            flextable() %>% 
-           width(width = 3), 
+           width(width = 2), 
          size = 8, 
          part = 'all')
 ```

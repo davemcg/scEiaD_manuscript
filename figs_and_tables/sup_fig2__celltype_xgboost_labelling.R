@@ -25,21 +25,45 @@ joinedCT <- left_join(prelabelledCT, predictedCT)
 joinedCT[is.na(joinedCT)] <- 0
 ctTable <- joinedCT %>% flextable()
 ##########
+# 
+# ct_alluvial <- ct_processing %>%
+#   select(CellType, CellType_predict) %>%
+#   group_by(CellType, CellType_predict) %>%
+#   summarise(Count = n()) %>%
+#   ggplot(aes(y = sqrt(Count), axis1 = CellType, axis2 = CellType_predict)) +
+#   geom_alluvium(aes(fill = `CellType`), alpha = 0.8) +
+#   geom_stratum(alpha = 0) +
+#   ggrepel::geom_label_repel(stat = "stratum",
+#                             direction = 'x',
+#                             fill = alpha(c("white"),0.5),
+#                             size = 2,
+#                             aes(label = after_stat(stratum))) +
+#   coord_cartesian(xlim = c(0.5,2.5)) +
+#   theme_void() +
+#   scale_fill_manual(values = c(pals::polychrome() %>% unname(),
+#                                pals::alphabet() %>% unname())) +
+#   theme(legend.position = "none")
 
-ct_alluvial <- ct_processing %>% 
-  select(CellType, CellType_predict) %>% 
-  group_by(CellType, CellType_predict) %>% 
+#########
+#  confusion matrix
+########
+
+ct_mat <- ct_processing %>%
+  select(CellType, CellType_predict) %>%
+  group_by(CellType, CellType_predict) %>%
   summarise(Count = n()) %>% 
-  ggplot(aes(y = sqrt(Count), axis1 = CellType, axis2 = CellType_predict)) +
-  geom_alluvium(aes(fill = `CellType`), alpha = 0.8) +
-  geom_stratum(alpha = 0) +
-  ggrepel::geom_label_repel(stat = "stratum", 
-                            direction = 'x', 
-                            fill = alpha(c("white"),0.5),
-                            size = 2, 
-                            aes(label = after_stat(stratum))) +
-  coord_cartesian(xlim = c(0.5,2.5)) +
-  theme_void() +
-  scale_fill_manual(values = c(pals::polychrome() %>% unname(),
-                               pals::alphabet() %>% unname())) +
-  theme(legend.position = "none")
+  mutate(Ratio = Count / sum(Count)) %>% 
+  select(-Count) %>% 
+  pivot_wider(values_from = Ratio, names_from = CellType_predict)
+ct_mat[is.na(ct_mat)] <- 0
+#ct_mat <- data.frame(ct_mat)
+
+
+rowN <- ct_mat$CellType
+ct_mat <- ct_mat[,-1] 
+ct_mat <- ct_mat[, colnames(ct_mat) %>% sort()]
+ct_mat <- ct_mat %>% as.matrix()
+row.names(ct_mat) <- rowN
+ct_mat <- ct_mat[row.names(ct_mat) %>% rev(), ]
+
+ct_confusion <- Heatmap(ct_mat, cluster_rows = FALSE, cluster_columns = FALSE, col=viridis(20), name =  'Recall')
