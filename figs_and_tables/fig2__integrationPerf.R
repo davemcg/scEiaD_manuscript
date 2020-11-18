@@ -93,13 +93,13 @@ zscore_droplet_scVI_optimize <- perf_tabula %>%
            scale(LISI_Batch)[,1] + 
            -scale(LISI_Cluster)[,1] +
            -scale(Silhouette_Batch)[,1] + 
-           scale(Silhouette_Cluster)[,1] +
+           scale(Silhouette_Cluster)[,1] #+
            
-           scale(`PCR_After-Before`)[,1]
+           #scale(`PCR_After-Before`)[,1]
   ) %>% 
   left_join(cluster_stats) %>% 
   filter(!is.na(clusterN)) %>% 
-  filter(knn == 0.6, method == 'scVI') %>% 
+  #filter(knn == 0.6, method == 'scVI') %>% 
   filter(!is.na(clusterN)) %>% 
   mutate(nf = as.factor(nf),
          `scVI latent dims` = as.factor(dims)) %>% 

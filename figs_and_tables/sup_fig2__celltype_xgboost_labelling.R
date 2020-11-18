@@ -13,6 +13,7 @@ ct_processing <-  meta_filter %>%
                                       TRUE ~ CellType_predict)) 
 
 ##########
+# Cell Counts
 predictedCT <- ct_processing %>% 
   group_by(organism, CellType_predict) %>% 
   summarise(`Published Count` = n()) %>% pivot_wider(values_from = `Published Count`, names_from = c(organism))
@@ -24,6 +25,25 @@ colnames(prelabelledCT) <- c('CellType','HS Published','MF Published','MM Publis
 joinedCT <- left_join(prelabelledCT, predictedCT)
 joinedCT[is.na(joinedCT)] <- 0
 ctTable <- joinedCT %>% flextable()
+##########
+
+##########
+# Study Counts
+predictedSA <- ct_processing %>% 
+  filter(!is.na(CellType_predict)) %>% 
+  select(CellType_predict, organism, study_accession) %>% unique() %>% 
+  group_by(organism, CellType_predict) %>% 
+  summarise(`Study Count` = n()) %>% pivot_wider(values_from = `Study Count`, names_from = c(organism))
+colnames(predictedSA) <- c('CellType','HS Studies (transferred)','MF Studies (transferred)','MM Studies (transferred)')
+prelabelledSA <- ct_processing %>% 
+  filter(!is.na(CellType)) %>% 
+  select(CellType, organism, study_accession) %>% unique() %>% 
+  group_by(organism, CellType) %>% 
+  summarise(`Study Count` = n()) %>% pivot_wider(values_from = `Study Count`, names_from = c(organism))
+colnames(prelabelledSA) <- c('CellType','HS Studies (published)','MF Studies (published)','MM Studies (published)')
+joinedSA <- left_join(prelabelledSA, predictedSA)
+joinedSA[is.na(joinedSA)] <- 0
+saTable <- joinedSA %>% flextable()
 ##########
 # 
 # ct_alluvial <- ct_processing %>%
