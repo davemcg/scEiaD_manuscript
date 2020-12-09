@@ -1,4 +1,4 @@
-load('~/data/massive_integrated_eye_scRNA/metrics_2020_10_07.Rdata')
+load('~/data/massive_integrated_eye_scRNA/metrics_2020_11_28.Rdata')
 
 perf <- perf %>% 
   mutate(knn = case_when(method == 'scArches' ~ 7, TRUE ~ knn))
@@ -8,7 +8,7 @@ perf_well <- perf %>% unique() %>% filter(set == 'onlyWELL') %>%
   select(Score, Group, Value, set, dims:normalization) %>% 
   filter(Score %in% c('LISI','Silhouette')) 
 
-perf_tabula <- perf %>% unique() %>% filter(set == 'TabulaDroplet') %>% 
+perf_tabula <- perf %>% unique() %>% filter(set %in% c('TabulaDroplet', 'universe')) %>% 
   select(Score, Group, Value, set, dims:normalization) %>% 
   filter(Score %in% c('LISI','Silhouette', 'ARI', 'PCR', 'NMI')) 
 
@@ -49,7 +49,7 @@ legend <- get_legend(
 )
 
 zscore_tabula <- perf_tabula %>% 
-  filter(nf == 2000, dims %in% c(8), knn == 7) %>% 
+  filter(nf == 2000, dims %in% c(8, 30), knn == 7) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   mutate(sumZScale = 
            -scale(LISI_CellType)[,1] +
@@ -64,25 +64,27 @@ zscore_tabula <- perf_tabula %>%
            scale(LISI_Batch)[,1] + # Z score
            -scale(LISI_Cluster)[,1] +
            -scale(Silhouette_Batch)[,1] + # Z score
-           scale(Silhouette_Cluster)[,1] +
-           scale(`PCR_After-Before`)[,1]) %>% 
+           scale(Silhouette_Cluster)[,1]) %>% 
+           #scale(`PCR_After-Before`)[,1]) %>% 
   left_join(cluster_stats) %>% 
   filter(!is.na(clusterN))
 
 zscore_sum_all_methods <- zscore_tabula  %>% 
+  filter(!grepl('proj', method)) %>% 
   mutate(normalization = case_when(method == 'scArches' ~ 'standard',
                                    TRUE ~ normalization)) %>% 
   arrange(-sumZScale) %>% 
-  ggplot(aes(x=method, y = sumZScale, shape = normalization, group = dims)) + 
+  ggplot(aes(x=method, y = sumZScale, shape = normalization, group = dims, alpha = dims)) + 
   geom_point(aes(color=method), size = 4, position = position_dodge(width = 1)) +
   cowplot::theme_cowplot() + 
   scale_color_manual(values = pals::alphabet() %>% unname(), guide = FALSE) + 
-  coord_flip() 
+  coord_flip() + 
+  scale_alpha_continuous(range = c(0.6, 1), breaks =c(8,30))
 
 
 zscore_droplet_scVI_optimize <- perf_tabula %>% 
-  #filter(knn > 0.4) %>% 
-  #filter(method == 'scVI') %>% 
+  filter(knn > 0.4) %>% 
+  filter(grepl('scVI', method)) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   mutate(sumZScale = 
            -scale(LISI_CellType)[,1] +
@@ -90,9 +92,9 @@ zscore_droplet_scVI_optimize <- perf_tabula %>%
            scale(`NMI_CellType-Cluster`)[,1] +
            scale(`ARI_CellType-Cluster`)[,1] +
            
-           scale(LISI_Batch)[,1] + 
+           scale(LISI_Batch)[,1]+ 
            -scale(LISI_Cluster)[,1] +
-           -scale(Silhouette_Batch)[,1] + 
+           -scale(Silhouette_Batch)[,1]  + 
            scale(Silhouette_Cluster)[,1] #+
            
            #scale(`PCR_After-Before`)[,1]
@@ -103,8 +105,8 @@ zscore_droplet_scVI_optimize <- perf_tabula %>%
   filter(!is.na(clusterN)) %>% 
   mutate(nf = as.factor(nf),
          `scVI latent dims` = as.factor(dims)) %>% 
-  ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`)) + 
-  geom_point(size = 4) +
+  ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`, shape = method)) + 
+  ggbeeswarm::geom_quasirandom(size = 4, groupOnX=FALSE) +
   scale_color_manual(values = pals::brewer.set1(n = 10) %>% unname()) +
   cowplot::theme_cowplot() +
   ylab('Number of\nHVGs')
@@ -112,7 +114,6 @@ zscore_droplet_scVI_optimize <- perf_tabula %>%
 zscore_onlyWell <- perf_well %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   mutate(sumZScale = 
-           
            scale(LISI_Batch)[,1] + # Z score
            2 * -scale(LISI_Cluster)[,1] + 
            -scale(Silhouette_Batch)[,1] + # Z score

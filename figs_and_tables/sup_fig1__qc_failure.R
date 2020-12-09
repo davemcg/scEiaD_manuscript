@@ -1,5 +1,7 @@
 library(ggalluvial)
 counts <- c(qc %>% 
+              mutate(organism = case_when(is.na(organism) ~ 'Homo sapiens',
+                                          TRUE ~ organism)) %>% 
               mutate(QC = gsub(' QC','', QC),
                      QC = gsub('Uni', '\nUni', QC), 
                      QC = gsub('Doubl', '\nDoubl', QC), 
@@ -22,6 +24,8 @@ counts <- c(qc %>%
 ) 
 
 supFig1_plot <- qc %>% 
+  mutate(organism = case_when(is.na(organism) ~ 'Homo sapiens',
+                                                   TRUE ~ organism)) %>% 
   mutate(QC = gsub(' QC','', QC),
          QC = gsub('Uni', '\nUni', QC), 
          QC = gsub('Doubl', '\nDoubl', QC), 
@@ -37,7 +41,7 @@ supFig1_plot <- qc %>%
   geom_stratum(aes(fill = `OrgTech`), alpha = 0.6) +
   geom_stratum(aes(fill = `QC`), alpha = 0.6) + 
   ggrepel::geom_text_repel(stat = "stratum", segment.color = NA,
-                           nudge_x = c(rep(c(-20),5), rep(c(20), 4)),
+                           nudge_x = c(rep(c(-20),5), rep(c(20), 5)),
                            direction = "y", size = 4,
                            aes(label = after_stat(stratum))) + theme_void() +
   shadowtext::geom_shadowtext(stat = "stratum", label=counts, bg.color = 'white', color = 'black') +

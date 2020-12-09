@@ -67,7 +67,6 @@ saTable <- joinedSA %>% flextable()
 #########
 #  confusion matrix
 ########
-
 ct_mat <- ct_processing %>%
   select(CellType, CellType_predict) %>%
   group_by(CellType, CellType_predict) %>%

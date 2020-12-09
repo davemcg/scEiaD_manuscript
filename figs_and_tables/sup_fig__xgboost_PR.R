@@ -1,13 +1,11 @@
 library(tidyverse)
-library(matrixStats)
+
 library(multiROC)
 
-load('~/data/massive_integrated_eye_scRNA/PREDICTIONSMus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features2000__counts__TabulaDroplet__batch__scVI__dims8__preFilter__mindist0.001__nneighbors500.Rdata')
+
 # # load('Mus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features2000__counts__TabulaDroplet__batch__scVI__dims8__preFilter__mindist0.001__nneighbors500.umap.Rdata')
 # # umapRef <- umap
-test_predictions <- data.table::fread('~/Desktop/856474_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
-  mutate(max_pred_prob = rowMaxs(.[,-(31:34)] %>% as.matrix ), 
-         pred_correct = ifelse(cell_type_id == true_cell_id, 'Correct', 'incorrect'))
+
 
 pr_calculator <- function(test_predictions, partition){
   if (partition != 'All'){

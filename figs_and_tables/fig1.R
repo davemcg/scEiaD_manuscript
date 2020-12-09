@@ -47,9 +47,9 @@ b <- as_tbl_graph(dagified) %>% mutate(bop = name) %>% ggraph(layout = 'graphopt
   
 
 # CellType
-ct_order <- cell_info_labels %>% mutate(CellType = case_when(is.na(CellType) ~ 'Unlabelled', grepl('RPC', CellType) ~ 'RPCs', TRUE ~ CellType)) %>% group_by(CellType) %>% count() %>% arrange(-n) %>% filter(n > 10000 | CellType %in% c('Astrocytes','RPE', 'Horizontal Cells'), CellType != 'Unlabelled') %>% pull(CellType)
+ct_order <- qc %>% mutate(CellType = case_when(is.na(CellType) ~ 'Unlabelled', grepl('RPC', CellType) ~ 'RPCs', TRUE ~ CellType)) %>% group_by(CellType) %>% count() %>% arrange(-n) %>% filter(n > 10000 | CellType %in% c('Astrocytes','RPE', 'Horizontal Cells'), CellType != 'Unlabelled') %>% pull(CellType)
 
-c <- cell_info_labels %>% 
+c <- qc %>% 
   mutate(CellType = case_when(is.na(CellType) ~ 'Unlabelled', grepl('RPC', CellType) ~ 'RPCs', TRUE ~ CellType)) %>% 
   filter(CellType %in% ct_order) %>% 
   filter(!is.na(CellType), 
