@@ -111,9 +111,9 @@ We propose that by re-processing publicly available raw single cell transcriptom
 
 ## We identify `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` ocular scRNA datasets across 3 species
 
-The first step in building a meta-atlas is identifying studies to draw the data from. We identified ocular single cell RNA seq (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome" and then hand filtering the results to only keep normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. As of September 2020 we identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r fig_cap(name = 'fig1', display = 'cite')`). To provide a non-ocular reference we also downloaded the raw sequence data for the Tabula Muris project for re-processing. 
+The first step in building a meta-atlas is identifying studies to draw the data from. We identified ocular single cell RNA sequencing (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome." We then hand filtered the results to only keep ocular and normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. As of September 2020 we identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r fig_cap(name = 'fig1', display = 'cite')`). To provide a non-ocular reference we also downloaded the raw sequence data from the Tabula Muris project for re-processing. 
 
-In cases where the fastq file from the SRA was not processed properly, we acquired the original bam files (personal correspondence or the SRA) and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
+In cases where the fastq file from the SRA was not processed properly, we acquired the original bam files (SRA or personal correspondence) and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
 
 ```{r fig1, fig.width=13, fig.height=6, fig.cap=fig1_cap, echo=FALSE, message = FALSE}
 fig1_cap <- fig_cap(name='fig1', caption =  'a. Counts of (study) accession, published papers, and batches for each scRNA technlogy, split by organism. b. Simplified directed workflow of major steps in scEiaD creation from raw counts to gene counts, benchmarking optimal integration methods (SnakePOP) to produce batch corrected latent dimensions (LatentDims), then downstream analysis outputs like clustering, differential gene testing (DiffTesting), and 2D UMAP visualization. c. Cell type counts extracted from published studies for the more common retina cell types, split by species. Count of study accessions for each species overlaid on bar plot.')
@@ -126,21 +126,21 @@ plot_grid(plot_grid(a, c, align = 'v',  axis = 'lr', ncol = 1, labels = c('','c'
 
 Gene-level counts were quantified with the kallisto bustool pseudo-aligner for both the droplet and well based samples. After empty droplet removal, we had `r format(qc %>% nrow() %>% as.integer() , big.mark=",", scientific=FALSE)` cells. We then created a Seurat v3 object, calculated the percent mitochondrial genes counts, and removed cells which had more than 10% mitochondrial reads across all gene counts. For the droplet-based data, we also removed cells which had more than 3000 unique genes detected as these are likely to be doublets. After these standard quality control steps we were left with `r format(umapRef %>% nrow, big.mark = ",", scientific=FALSE)` cells. 
 
-A core objective of many scRNA based studies is labeling distinct cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of hand-searching the Gene Expression Omnibus, supplemental information from the publication, web resources (if an web app was made available), and personal correspondence. After normalizing cell type names, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types (`r supTab_cap(name = 'supTab1_CTcounts', display = 'cite')`). 
+A core objective of many scRNA based studies is labeling the cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of the GEO, supplemental information from the publication, web resources (e.g. a web app was created for the paper), and personal correspondence. After normalizing cell type name nomenclature, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types (`r supTab_cap(name = 'supTab1_CTcounts', display = 'cite')`). 
 
 ## Running `r methods %>% length()` tools in a Snakefile-based system
 
-Removal of the technical effects from the data is a crucial step in assessing the biological patterns out of the a meta-dataset. A wide variety of methods have been written for this function. As we were uncertain which would perform the best and it is difficult to manually assess performance we ran `r methods %>% length()` tools with a commonly used set of key parameters that affect integration: 2000 hyper variable genes, 8 and 30 latent dimensions returned, and the louvain clustering algorithm with 7 k-nearest neighbors. The Snakemake system was used to automate the running of the wide variety of patterns. In total, BLOOP jobs were run to quantify expression and assess integration performance. 
+Disentangling the technical and biological effects from the datasets is crucial. A wide variety of methods have been written for this function. As we were uncertain which would perform the best and it is difficult to manually assess performance we ran `r methods %>% length()` tools with a commonly used set of key parameters: 2000 hyper variable genes, 8 and 30 latent dimensions returned, and the louvain clustering algorithm with 7 k-nearest neighbors. The Snakemake system was used to automate the running of the wide variety of tools. In total 15,226 jobs were run to quantify expression and assess integration performance. 
 
-The two key metrics which have to be balanced in order to optimize performance are batch mixing (the same cell types should be similar across independent studies) and cell type or cluster purity (where different cell types or clusters should be distinct). While these can be visually assessed by looking at marker gene expression across the 2D t-SNE or UMAP projection, it is more rigorous and scalable to quantify these diametrically opposed characteristics.
+The two key metrics which have to be balanced in order to optimize performance are batch mixing (the same cell types should be similar across independent studies) and cell type or cluster purity (where different cell types or clusters should be distinct). While these can be visually assessed by looking at marker gene expression across the 2D UMAP projection, it is more rigorous and scalable to quantify these diametrically opposed characteristics.
 
 We define batch as being each biological sample and assume each study is at least one unique sample. We studied the metadata and methods of each study to determine if the particular study contained multiple unique biological samples. In the end we identified `r umapRef %>% pull(batch) %>% unique() %>% length()` batches across `r umapRef %>% pull(study_accession) %>% unique() %>% length()` deposited datasets in `r umapRef %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` published papers.
 
 ## scPOP wraps several different methods at measuring integration performance. 
 
-scPOP brings together the Local Simpson Index (LISI) and Average Silhouette Width (ASW) metrics from Harmony and kBET, respectively, and re-implemnets the Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI) algorithms. The LISI and ASW were used to measure batch mixing (where lower is better), cell type mixing (higher is better), and cluster mixing (higher is better). NMI and ARI were used to assess the consistency of cell type to cluster assignment (where 1 is perfect correspondence between cluster and cell type).
+scPOP is a lightweight, low dependency R package which brings together the Local Simpson Index (LISI) and Average Silhouette Width (ASW) metrics from Harmony and kBET, respectively, and re-implements the Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI) algorithms. The LISI and ASW were used to measure batch mixing (where lower is better), cell type mixing (higher is better), and cluster mixing (higher is better). NMI and ARI were used to assess the consistency of cell type to cluster assignment (where 1 is perfect correspondence between cluster and cell type).
 
-To visualize the interplay between batch mixing and cell type distinction we plot the batch mixing LISI score (which has been multiplied by -1) was plotted on the y-axis (higher is better) against the cluster LISI on the x-axis (higher is better). The best performer on both metrics will be in the top right corner  (`r supFig_cap(name = 'supFig_benchmark', display = 'cite')`a). In the same manner we plot the silhouette metric (`r supFig_cap(name = 'supFig_benchmark', display = 'cite')` b). 
+To visualize the interplay between batch mixing and cell type distinction we plot the batch mixing LISI score (which has been multiplied by -1) on plotted on the y-axis (higher is better) against the cluster LISI on the x-axis (higher is better). The best performer on both metrics will be in the top right corner  (`r supFig_cap(name = 'supFig_benchmark', display = 'cite')`a). In the same manner we plot the silhouette metric (`r supFig_cap(name = 'supFig_benchmark', display = 'cite')` b). 
 
 <!-- ## scPOP reveals different priorities across the different batch integration methods -->
 
@@ -201,7 +201,7 @@ source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
 source('figs_and_tables/make_meta_scatter_umap_plot.R')
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
-input[['pt_size_meta']] <- 1
+input[['pt_size_meta']] <- 0
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 input[['label_toggle']] <- 2
@@ -217,7 +217,7 @@ ctp <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
-input[['pt_size_meta']] <- 2
+input[['pt_size_meta']] <- 1
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 #input[['meta_filter_cat']] <- 'CellType_predict'
@@ -232,7 +232,7 @@ ctp2 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 
 input <- list()
 input[['meta_column']] <- 'organism'
-input[['pt_size_meta']] <- 1
+input[['pt_size_meta']] <- 0
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 #input[['meta_filter_cat']] <- 'CellType_predict'
@@ -266,27 +266,38 @@ The 2D UMAP projection of the scVI-calculated batch corrected 10 latent dimensio
 
 Differential gene expression testing between clusters or cell types in the single cell field usually involve using running the statistical test of choice with all individual cells across the group. In bulk RNA-seq the tests are done in relation to replicates, which are generally required. As we have a large number of replicates, we can sum our gene expression counts by group (e.g. celltype or cluster, split by organism and study). After this summing, we now have created a "pseudo-bulk" matrix. The statistical properties (CITE SOMETHING) are now similar to the traditional bulk RNA-seq experiment, allowing us to leverage the robust tooling. We use the edgeR test to run our differential expression tests. 
 
+## Pseudotime recapitulates and improves resolution of developmental processes
+
 ## Projection of new data onto scEiaD 
 
-The hard work of creating this resource can be 
+The hard work of creating this resource can be leveraged by the wider community with a few relatively simple steps. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our scVI model, and 3. following the jupyter notebook we provide as supplemental file BLOOP. We demonstrate by adding new retina data to scEiaD that was published after our last data pull. 
 
-## Pan mouse as non-ocular reference to improve retina-specific gene search
+##
+<!-- ## Pan mouse as non-ocular reference to improve retina-specific gene search -->
 
-Do some sloppy/easy thing where we identify retina specific genes by searching across the TM data?
+<!-- Do some sloppy/easy thing where we identify retina specific genes by searching across the TM data? -->
 
 # Methods
 
-## Reproducblity
+## Reproduciblity
 
-The full Snakemake pipeline that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad. The publication commit is BLOOP. Furthermore, the repository has been deposited at zenodo under BLOOP. We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide the versions as the supplementary file "R_session_info.txt"
+The full Snakemake pipeline that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad. The publication commit is BLOOP. Furthermore, the repository has been deposited at zenodo under BLOOP. We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide versions as the supplementary file "R_session_info.txt"
 
 ## Quantification of gene counts
 
 Kallisto (0.46.2) was the pseudoaligner. To reference transcriptomes used to build the kallisto index were the Gencode "gencode.vM25.annotation.gtf.gz" and "gencode.v35.annotation.gtf.gz" for mouse and human, respectively. The Ensembl release 99 "Macaca_mulatta.Mmul_10.99.gtf.gz" was used for the macaque transcriptome, For the relatively few single ended samples, the params "--single -l 200 -s 30" were used for kallisto quant. Otherwise the "--bias" flag was added. For the droplet-based samples, bustools (0.39.4) was used to extract the single cell barcodes, sort the output, and fix small barcoding errors.  
 
+## Intersection of gene names between mouse, macaque, and human
+
+VINAY DISCUSS
+
+## Custom macaque reference quant
+
+As we noticed that several retina marker genes (WHICH ONES!!!!) had unusually low expression we quantified the macaque data twice: once with the Ensembl reference and again with the same Gencode human reference used for the human data. We compared the gene-level counts for each cell and replaced the macaque gene count with the human counts if the human counts were higher. 
+
 ## Remove empty droplets and further QC.
 
-After bustools count, we used the R environment (3.6.2) to remove empty droplets. The BUSpaRse package was used to input the bustools counts outputted mtx file. The DropletUtils package with the "barcodeRanks" function was used to automatically detect the inflection point in the barcode count ranks that distinguishes the likely empty droplets. After merging the individual count matrices into one matrix, we created a Seurat version 3 object and removed cells with a percent mitochondrial reads of >10%, fewer than 200 detected unique genes, and for the droplet data, more than 3000 detected genes. 
+After bustools count, we used the R environment (3.6.2) to remove empty droplets. The BUSpaRse package was used to input the bustools counts outputted mtx file. The DropletUtils package with the "barcodeRanks" function was used to automatically detect the inflection point in the barcode count ranks that distinguishes the likely empty droplets. We then removed cells with percent mitochondrial reads of >10%. After merging the individual count matrices into one sparse matrix, we created a Seurat version 3 object and removed cells with fewer than 200 detected unique genes, and for the droplet data, more than 3000 detected genes (these are likely to be doublets). 
 
 ## Normalization and batch effect correction
 
@@ -294,38 +305,53 @@ We tested several gene count normalization approaches as we were not certain whi
 
 ## Batch normalization under a grid search procedure
 
-We tested `r methods` against 2000 HVGs, the different gene count normalization procedures discussed above, and both 8 and 30 outputted batch corrected latent dimensions. The latent dimensions are the input for clustering, the 2D UMAP visualization, and the xgboost machine learning to transfer cell type labels to unlabelled cells. We were unable to run every method successfully with every normalization method. Magic could not complete with the standard or libSize normalization. CCA could not complete with the libSize normalization. We also tried the DESC, liber, and Conos batch corrections methods but were unable to get them to work reliably so they were not included. The batch correction step implementation can be found the supplementary file "merge_methods.R".
+We tested `r methods` against 2000 HVGs, the different gene count normalization procedures discussed above, and both 8 and 30 outputted batch corrected latent dimensions. The latent dimensions are the input for clustering, the 2D UMAP visualization, and the xgboost machine learning to transfer cell type labels to unlabelled cells. We were unable to run every method successfully with every normalization method. Magic could not complete with the standard or libSize normalization. CCA could not complete with the libSize normalization. We also tried the DESC, liger, and Conos batch corrections methods but were unable to get them to work reliably so they were not included. The batch correction step implementation can be found the supplementary file "merge_methods.R".
 
 ## Clustering and UMAP
-Louvain-Jaccard clustering against the batch corrected latend dimensions used the Seurat implementation. We altered the k-nearest neighbors (knn) parameters to try 5, 7, and 10 (where 5 gives more clusters than 10). We also used the leiden algorith as implemented by PARC with a resolution of 0.6 and 0.8. These two resolutions were chosen as they roughly gave the same number of clusters at the Seurat Louvain-Jaccard with a knn 7. 
+Louvain-Jaccard clustering against the batch corrected latend dimensions used the Seurat implementation. We tried the k-nearest neighbors (knn) parameters 5, 7, and 10 (where 5 gives more clusters than 10). We also used the leiden algorithm as implemented by PARC with a resolution of 0.6 and 0.8. These two resolutions were chosen as they roughly gave the same number of clusters at the Seurat Louvain-Jaccard aprroach with a knn 7. 
 
-The UMAP visualization was also calculated with the Seurat implementation with the uwot R package. We altered the min.dist parameter with 0.001 and 0.1 and tried n.neighbors with 15, 30, 100, and 500. A smaller min.dist value gives "tighter" groupings while a higher number of n.neighbors uses a number of near cells the calculate the global positioning. 
+The UMAP visualization was calculated with the Seurat "RunUMAP" using the uwot R package. We altered the min.dist parameter with 0.001 and 0.1 and tried n.neighbors across 15, 30, 100, and 500. A smaller min.dist value gives "tighter" groupings while a higher number of n.neighbors uses a larger number of near cells to calculate the global positioning. 
 
 ## Benchmarking 
 
-We wrote the scPOP R package to unify the LISI and Silhouette metrics from Harmony and kBet, respectively, along with NMI, ARI, and PCA variance explained before/after correction (PCR) which are implemented by scIB. As scIB is a python package, we brought over the tools with the basilisk package, which places a conda versioned python package which allows for easy installation without having to manage the python dependencies. 
+We wrote the scPOP R package to unify the LISI and Silhouette metrics from Harmony and kBet, respectively, along with NMI and ARI.
 
 To merge these metrics into a single score, we Z scale each and sum them. scPOP produces both tables and visualizations allowing the user to quickly see both the interplay of batch mixing and cluster/cell type separation and the overall performance. If a user wishes to prioritize batch mixing or cluster/cell type separation we let the user provide a custom batch/cluster-cell type scaling value (1 is the default). 
 
 ## Multi-step doublet removal
-While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there are likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
+While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there were likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
+
+## xgboost based cell type model
+
+VINAY WRITE
 
 ## pseudobulk differential expression testing
 
 Our pseudo-bulk differential testing was inspired by the OSCA guide. We computed differential tests for: cell type (published/transferred) against remaining cell types, celltype (published/transferred) pairwise against other individual celltype (published/transferred), specific cluster against remaining clusters, specific cluster against different individual cluster (pair-wise). Briefly, we grouped cells by the categories (e.g. each unique celltype (transferred) - study combination) and summed all gene counts. After summing the scores, we built a model matrix as 0 ~ categories + organism to remove any species specific effects. When then used the edgeR "estimateDisp" and tested the fit with "glmQLFit" and the parameter "robust = TRUE". Specific contrasts (e.g. Rods vs Cones) were differentially tested with "glmQLFTest".
 
+## trajectory
+
+DAVID
+
+## velocity
+
+VINAY
+
+## Projection of new data onto scEiaD
+
+DAVID
 
 # Conclusion
 
 ## Self built meta-atlases are easy as 1,2, benchmark a bunch, 3
 
-## Projection of cell type labels from a smaller number of studies onto the remainining cells is a powerful way to increase diversity in a meta-atlas
+## Transfer of cell type labels from a smaller number of studies onto the remainining cells is a powerful way to increase diversity in a meta-atlas
 
 ## The scEiaD dataset provides a highly diverse, large N resource for methods development 
 
 ## The scEiaD is a unique ocular community resource  
 
-## Fast algorithms are important 
+## Projection allows community knowledge to be leveraged by all
 
 # Supplemental
 ```{r supFig1, fig.width=4, fig.height=6, out.width=300, fig.cap=supFig1_cap, echo=FALSE, message = FALSE}
