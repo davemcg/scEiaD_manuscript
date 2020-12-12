@@ -63,7 +63,9 @@ meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_pred
                                                                    CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
                                                                    CellType_predict == 'RPC' ~ 'RPCs',
                                                                    CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
-                                                                   TRUE ~ CellType_predict)) 
+                                                                   TRUE ~ CellType_predict)) %>%
+  mutate(CellType_predict = case_when(!is.na(TabulaMurisCellType_predict) ~ 'Tabula Muris',
+                   TRUE ~ CellType_predict))
 # cell num  before QC removal (mito / likely doublets)
 #qc <- read_tsv('~/data/massive_integrated_eye_scRNA/mito_counts.tsv')
 
@@ -200,7 +202,7 @@ source('figs_and_tables/make_meta_scatter_umap_plot.R')
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
 input[['pt_size_meta']] <- 0
-input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+#input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 input[['label_toggle']] <- 2
 #input[['meta_filter_cat']] <- 'CellType_predict'
@@ -229,9 +231,9 @@ ctp2 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 )
 
 input <- list()
-input[['meta_column']] <- 'organism'
+input[['meta_column']] <- 'CellType_predict'
 input[['pt_size_meta']] <- 0
-input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+#input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 #input[['meta_filter_cat']] <- 'CellType_predict'
 #input[['meta_filter_on']] <- 'Bipolar Cells'
@@ -258,11 +260,13 @@ After ML projection of cell type labels from the original `r meta_filter %>% fil
 
 ## The scVI-based scEiaD UMAP projection blends batches while separating cell types
 
-The 2D UMAP projection of the scVI-calculated batch corrected 10 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We see the neurogenic populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptors (cones and rods) of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP space. The amacrine, muller glia, horizontal, and retinal ganglia are in distinct spaces. 
+The 2D UMAP projection of the scVI-calculated batch corrected 10 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We also see good mixing across all the droplet and well based single cell technologies (`r supFig_cap(name = 'supFig_platformInt', display = 'cite')`). We see the neurogenic and progenitor populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptor precursors are adjacent to the neurogenic population and flow into the rods and cones. The amacrine and horizontal precursors (AC/HC) likewise flow from the neurogenic center into the mature amacrine and horizontal cells. 
 
-## Pseudobulk testing leverages high biological diversity to provide robust differential expression results
+The photoreceptors (cones and rods) of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP space. The major remaining retina cell types, by proportion in the mammalian eye are the Muller Glia, which are a glial cell type which help support the neurons of the retina. Next we have the neural cell types which transmit and help interpret the signals from the photoreceptors before they leave the retina via the optic stalk: the amacrine cells, retinal ganglia, horizontal, and bipolar cells. All of these cells are in well defined spaces in the UMAP. Finally we see even across species that the major cell types still group near each other (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`d). The macaque retina cells are not present in the precursor/neurogenic center of the UMAP as expected because only fully developed tissues were sampled in these data.  
 
-Differential gene expression testing between clusters or cell types in the single cell field usually involve using running the statistical test of choice with all individual cells across the group. In bulk RNA-seq the tests are done in relation to replicates, which are generally required. As we have a large number of replicates, we can sum our gene expression counts by group (e.g. celltype or cluster, split by organism and study). After this summing, we now have created a "pseudo-bulk" matrix. The statistical properties (CITE SOMETHING) are now similar to the traditional bulk RNA-seq experiment, allowing us to leverage the robust tooling. We use the edgeR test to run our differential expression tests. 
+<!-- ## Pseudobulk testing leverages high biological diversity to provide robust differential expression results -->
+
+<!-- Differential gene expression testing between clusters or cell types in the single cell field usually involve using running the statistical test of choice with all individual cells across the group. In bulk RNA-seq the tests are done in relation to replicates, which are generally required. As we have a large number of replicates, we can sum our gene expression counts by group (e.g. celltype or cluster, split by organism and study). After this summing, we now have created a "pseudo-bulk" matrix. The statistical properties (CITE SOMETHING) are now similar to the traditional bulk RNA-seq experiment, allowing us to leverage the robust tooling. We use the edgeR test to run our differential expression tests.  -->
 
 ## Pseudotime recapitulates and improves resolution of developmental processes
 
@@ -291,11 +295,11 @@ VINAY DISCUSS
 
 ## Custom macaque reference quant
 
-As we noticed that several retina marker genes (WHICH ONES!!!!) had unusually low expression we quantified the macaque data twice: once with the Ensembl reference and again with the same Gencode human reference used for the human data. We compared the gene-level counts for each cell and replaced the macaque gene count with the human counts if the human counts were higher. 
+As we noticed that several retina marker genes (WHICH ONES!!!!) had unusually low expression in the macaque data we quantified the scRNA data twice: once with the Ensembl reference and again with the same Gencode human reference used for the human data. We compared the gene-level counts for each cell and replaced the macaque gene count with the human counts if the human counts were higher. VINAY AM I MISSING DETAILS?
 
 ## Remove empty droplets and further QC.
 
-After bustools count, we used the R environment (3.6.2) to remove empty droplets. The BUSpaRse package was used to input the bustools counts outputted mtx file. The DropletUtils package with the "barcodeRanks" function was used to automatically detect the inflection point in the barcode count ranks that distinguishes the likely empty droplets. We then removed cells with percent mitochondrial reads of >10%. After merging the individual count matrices into one sparse matrix, we created a Seurat version 3 object and removed cells with fewer than 200 detected unique genes, and for the droplet data, more than 3000 detected genes (these are likely to be doublets). 
+After bustools count, we used R (3.6.2) to remove empty droplets. The BUSpaRse package was used to input the bustools counts mtx file. The DropletUtils package with the "barcodeRanks" function was used to automatically detect the inflection point in the barcode count ranks that distinguishes the likely empty droplets. We then removed cells with percent mitochondrial reads of >10%. After merging the individual count matrices into one sparse matrix, we created a Seurat version 3 object and removed cells with fewer than 200 detected unique genes, and for the droplet data, more than 3000 detected genes (these are likely to be doublets). 
 
 ## Normalization and batch effect correction
 
@@ -306,13 +310,13 @@ We tested several gene count normalization approaches as we were not certain whi
 We tested `r methods` against 2000 HVGs, the different gene count normalization procedures discussed above, and both 8 and 30 outputted batch corrected latent dimensions. The latent dimensions are the input for clustering, the 2D UMAP visualization, and the xgboost machine learning to transfer cell type labels to unlabelled cells. We were unable to run every method successfully with every normalization method. Magic could not complete with the standard or libSize normalization. CCA could not complete with the libSize normalization. We also tried the DESC, liger, and Conos batch corrections methods but were unable to get them to work reliably so they were not included. The batch correction step implementation can be found the supplementary file "merge_methods.R".
 
 ## Clustering and UMAP
-Louvain-Jaccard clustering against the batch corrected latend dimensions used the Seurat implementation. We tried the k-nearest neighbors (knn) parameters 5, 7, and 10 (where 5 gives more clusters than 10). We also used the leiden algorithm as implemented by PARC with a resolution of 0.6 and 0.8. These two resolutions were chosen as they roughly gave the same number of clusters at the Seurat Louvain-Jaccard aprroach with a knn 7. 
+Louvain-Jaccard clustering against the batch corrected latent dimensions used the Seurat implementation. We tried the k-nearest neighbors (knn) parameters 5, 7, and 10 (where 5 gives more clusters than 10). We also used the leiden algorithm as implemented by PARC with a resolution of 0.6 and 0.8. These two resolutions were chosen as they roughly gave the same number of clusters at the Seurat Louvain-Jaccard aprroach with a knn 7. 
 
 The UMAP visualization was calculated with the Seurat "RunUMAP" using the uwot R package. We altered the min.dist parameter with 0.001 and 0.1 and tried n.neighbors across 15, 30, 100, and 500. A smaller min.dist value gives "tighter" groupings while a higher number of n.neighbors uses a larger number of near cells to calculate the global positioning. 
 
 ## Benchmarking 
 
-We wrote the scPOP R package to unify the LISI and Silhouette metrics from Harmony and kBet, respectively, along with NMI and ARI.
+We wrote the scPOP R package to unify the LISI and Silhouette metrics from Harmony and kBet, respectively, along with NMI and ARI. LISI and Silhouette require a dense matrix, which is a problem for our data as a 1e6 x 20,000 matrix cannot fit even in a 1.5 TB memory node. We down-sampled the dataset to ~100,000 cells, taking care to keep rarer cell types for the LISI and Silhouette benchmarking.
 
 To merge these metrics into a single score, we Z scale each and sum them. scPOP produces both tables and visualizations allowing the user to quickly see both the interplay of batch mixing and cluster/cell type separation and the overall performance. If a user wishes to prioritize batch mixing or cluster/cell type separation we let the user provide a custom batch/cluster-cell type scaling value (1 is the default). 
 
@@ -323,9 +327,9 @@ While we removed droplet-based cells with more than 3,000 transcripts as these a
 
 VINAY WRITE
 
-## pseudobulk differential expression testing
+<!-- ## pseudobulk differential expression testing -->
 
-Our pseudo-bulk differential testing was inspired by the OSCA guide. We computed differential tests for: cell type (published/transferred) against remaining cell types, celltype (published/transferred) pairwise against other individual celltype (published/transferred), specific cluster against remaining clusters, specific cluster against different individual cluster (pair-wise). Briefly, we grouped cells by the categories (e.g. each unique celltype (transferred) - study combination) and summed all gene counts. After summing the scores, we built a model matrix as 0 ~ categories + organism to remove any species specific effects. When then used the edgeR "estimateDisp" and tested the fit with "glmQLFit" and the parameter "robust = TRUE". Specific contrasts (e.g. Rods vs Cones) were differentially tested with "glmQLFTest".
+<!-- Our pseudo-bulk differential testing was inspired by the OSCA guide. We computed differential tests for: cell type (published/transferred) against remaining cell types, celltype (published/transferred) pairwise against other individual celltype (published/transferred), specific cluster against remaining clusters, specific cluster against different individual cluster (pair-wise). Briefly, we grouped cells by the categories (e.g. each unique celltype (transferred) - study combination) and summed all gene counts. After summing the scores, we built a model matrix as 0 ~ categories + organism to remove any species specific effects. When then used the edgeR "estimateDisp" and tested the fit with "glmQLFit" and the parameter "robust = TRUE". Specific contrasts (e.g. Rods vs Cones) were differentially tested with "glmQLFTest". -->
 
 ## trajectory
 
@@ -463,10 +467,31 @@ fontsize(predictions %>%
 ```
 
 
+
 Words
 
 Spacing
 
 
+```{r supFig_platformInt, fig.width=12, fig.height=10,  fig.cap=supFig_platformInt_cap, echo=FALSE, message = FALSE}
+supFig_platformInt_cap <- supFig_cap(name='supFig_platformInt', caption =  '')
+input <- list()
+input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_meta']] <- 5
+input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+input[['meta_column_transform']] <- 'None'
+#input[['meta_filter_cat']] <- 'CellType_predict'
+#input[['meta_filter_on']] <- 'Bipolar Cells'
+ctp3 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
+                                   celltype_predict_labels,
+                                   celltype_labels,
+                                   tabulamuris_predict_labels,
+                                   cluster_labels,
+                                   cat_to_color_df
+)
+
+
+ctp3$plot + facet_wrap(~Platform)
+```
 
 
