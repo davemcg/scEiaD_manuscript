@@ -33,7 +33,7 @@ meta_filter <- meta_filter %>% mutate(SubCellType = tidyr::replace_na(SubCellTyp
 
   
 map_color <- function(column, meta_filter){
-  master_colorlist <- c(pals::alphabet(), pals::alphabet2())
+  master_colorlist <- c(pals::polychrome()[3:length(pals::polychrome())], pals::alphabet2())
   values <- meta_filter %>% pull(!!column) %>% unique %>% sort
   if(length(values) > length(master_colorlist) ){
     r= round(length(values) / length(master_colorlist)) +1
@@ -64,13 +64,13 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
   pt_size <- input$pt_size_meta %>% as.numeric()
   filter_column <- input$meta_column
   # cut down to match tech selected
-  tech <- input$gene_and_meta_scatter_tech
-  mf <- mf %>% filter(TechType == tech)
-  meta_filter <- meta_filter %>% filter(TechType == tech)
-  celltype_predict_labels <- celltype_predict_labels %>% filter(TechType == tech)
-  celltype_labels <- celltype_labels %>% filter(TechType == tech)
-  tabulamuris_predict_labels <- tabulamuris_predict_labels %>% filter(TechType == tech)
-  cluster_labels <- cluster_labels %>% filter(TechType == tech)
+  #tech <- input$gene_and_meta_scatter_tech
+  #mf <- mf %>% filter(TechType == tech)
+  #meta_filter <- meta_filter %>% filter(TechType == tech)
+  #celltype_predict_labels <- celltype_predict_labels %>% filter(TechType == tech)
+  #celltype_labels <- celltype_labels %>% filter(TechType == tech)
+  #tabulamuris_predict_labels <- tabulamuris_predict_labels %>% filter(TechType == tech)
+  #cluster_labels <- cluster_labels %>% filter(TechType == tech)
   
   if (transform == 'log2' && is.numeric(meta_filter[,meta_column] %>% pull(1))){
     cat('log2 time')
@@ -141,7 +141,7 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
                                         interpolate=FALSE) +
                        #geom_point(data=data.frame(x=double(0)), aes(x,x,color=x))  +
                        geom_point(data=color_data, aes(x,x,color=value), alpha = 0) +
-                       scale_colour_manual(name= meta_column %>% gsub('_',' (', .) %>% gsub('idct$',')',.),
+                       scale_colour_manual(name= meta_column %>% gsub('_',' (', .) %>% gsub('$',')',.),
                                            values = color_list) +
                        theme_cowplot() +
                        theme(axis.line = element_blank(),
@@ -188,5 +188,5 @@ celltype_predict_labels <- celltype_predict_labels %>%
                      TRUE ~ CellType_predict)) %>% 
   group_by(CellType_predict, TechType) %>% 
   summarise(UMAP_1 = mean(UMAP_1), UMAP_2 = mean(UMAP_2)) %>% 
-  filter(!CellType_predict %in% c('B-Cell','T-Cell','Smooth Muscle Cell', 'AC/HC_Percurs', 'Red Blood Cells'))
+  filter(!CellType_predict %in% c('B-Cell','T-Cell','Smooth Muscle Cell', 'AC/HC_Precurs', 'Red Blood Cells'))
 

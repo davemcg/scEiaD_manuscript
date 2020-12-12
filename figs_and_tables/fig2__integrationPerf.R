@@ -106,7 +106,7 @@ zscore_droplet_scVI_optimize <- perf_tabula %>%
   mutate(nf = as.factor(nf),
          `scVI latent dims` = as.factor(dims)) %>% 
   ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`, shape = method)) + 
-  ggbeeswarm::geom_quasirandom(size = 4, groupOnX=FALSE) +
+  ggbeeswarm::geom_quasirandom(size = 3, groupOnX=FALSE) +
   scale_color_manual(values = pals::brewer.set1(n = 10) %>% unname()) +
   cowplot::theme_cowplot() +
   ylab('Number of\nHVGs')
