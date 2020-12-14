@@ -97,6 +97,7 @@ exp_stats <- scEiaD_2020_v01 %>% tbl('grouped_stats') %>%
 
 marker_info %>% left_join(exp_stats %>% dplyr::rename(cluster = CellType_predict))
 
+# marker_info %>% left_join(exp_stats %>% dplyr::rename(cluster = CellType_predict)) %>% filter((FDR < 1 |  med_auc > 0.4 | D_KL > 0.5), D_KL > 0.1,`%` > 30) %>% filter(cluster == 'Horizontal Cells')
 
 make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
   ### this makes it a little easier to test
