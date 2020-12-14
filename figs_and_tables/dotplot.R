@@ -36,6 +36,30 @@ load('~/data/massive_integrated_eye_scRNA/Mus_musculus_Macaca_fascicularis_Homo_
 #   group_by(cluster) %>% 
 #   top_n(3, L4)  
 
+marker_list <- list()
+for (i in (meta_filter$CellType_predict %>% unique())){
+  if (is.na(i)){
+    next()
+  } else {
+    var <- i
+    print(var)
+    test <- glue("%-1*{var}%")
+    ct <- glue("%{var}%")
+    markers <- scEiaD_2020_v01 %>% 
+      tbl('PB_results') %>% 
+      filter(PB_Test == 'Pairwise CellType (Predict) against CellType (Predict)', 
+             test %like% (!!ct), 
+             logCPM > 5)  %>% 
+      mutate(logFC = case_when(comparison %like% (!!test) ~ abs(logFC), 
+                               TRUE ~ logFC)) %>%  group_by(Gene) %>% 
+      summarise(L1 = sum(logFC > 1), L4 = sum(logFC > 4), 
+                Diff = mean(logFC)) %>% 
+      arrange(-Diff, -L4) %>% 
+      collect()
+    marker_list[[var]] <- markers
+  }
+}
+
 marker_info <-  markers_summary %>% 
   #filter(pval < 1) %>% 
   group_by(cluster) %>% 
