@@ -24,7 +24,7 @@ output:
     pandoc_args:
       - '--lua-filter=scholarly-metadata.lua'
       - '--lua-filter=author-info-blocks.lua'
-bibliography: massive_integrated_eye_scRNA.bib
+bibliography: references2.bib
 csl: investigative-ophthalmology-and-visual-science.csl
 abstract: "The development of highly scalable single cell transcriptome technology has allowed for a high resolution view into huge numbers of single cell transcriptomes. Analyzing the transcriptomes between different projects is highly desirable as this would theoretically allow for better assessment of which effects are consistent across independent studies. However it is difficult to compare and contrast data across different projects as there are substantial batch effects from computational processing, single cell technology utilized, and the natural biological variation. While many single cell transcriptome specific batch correction methods purport to remove the technical noise it is difficult to ascertain which method works best. We developed an R package (scPOP) that can scan the results of multiple methods and key parameter choices and create a ranked list of the best performing method / parameter combinations. We use this package along with a Snakefile based workflow system to demonstrate how to optimally merge over 1.4 million cells from 30 datsets and three species to create a massive ocular single cell transcriptome meta-atlas. This provides a model how to efficiently create meta-atlases for tissues and cells of interest."
 keywords: "RNA-seq, retina, RPE, ocular, eye, Snakemake, singlecell, scRNA, single-cell, singlecell, scPOP, R"
@@ -56,21 +56,23 @@ supFig_cap <- captioner("Supplemental Figure")
 tab_cap <- captioner("Table")
 supTab_cap <- captioner("Supplemental Table")
 
-scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/massive_integrated_eye_scRNA/MOARTABLES__anthology_limmaFALSE___Mus_musculus_Macaca_fascicularis_Homo_sapiens-0-5000-counts-universe-batch-scVIprojectionSO-10-0.1-500-0.6.sqlite", idleTimeout = 3600000)
+scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/massive_integrated_eye_scRNA/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-500-0.6.sqlite", idleTimeout = 3600000)
 
 meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
 meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
                                                                    CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
                                                                    CellType_predict == 'RPC' ~ 'RPCs',
                                                                    CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
-                                                                   TRUE ~ CellType_predict)) %>%
+                                                                   TRUE ~ CellType_predict),
+                                      UMAP_1 = UMAP_1 * -1,
+                                      UMAP_2 = UMAP_2 * -1) %>%
   mutate(CellType_predict = case_when(!is.na(TabulaMurisCellType_predict) ~ 'Tabula Muris',
-                   TRUE ~ CellType_predict))
+                                      TRUE ~ CellType_predict))
 # cell num  before QC removal (mito / likely doublets)
 #qc <- read_tsv('~/data/massive_integrated_eye_scRNA/mito_counts.tsv')
 
 # meta data before doublet removal
-load('~/data/massive_integrated_eye_scRNA/Mus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features5000__counts__universe__batch__scVIprojectionSO__dims10__preFilter.scEiaDprojected__mindist0.1__nneighbors500.umap.Rdata')
+load('~/data/massive_integrated_eye_scRNA/n_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.1__neighbors-500.umap.Rdata')
 umapRef <- umap
 
 methods <- factor(c('scArches', 'bbknn','insct','magic', 'scVI','CCA', 'scanorama', 'harmony', 'fastMNN', 'combat', 'none', 'liger'), levels = c('bbknn','CCA','combat','fastMNN','harmony','insct','liger','magic','scanorama','scArches','scVI', 'none')) 
@@ -80,22 +82,27 @@ gse <- read_tsv('~/git/massive_integrated_eye_scRNA/data/GEO_Study_Level_Metadat
 qc <- readr::read_tsv('~/data/massive_integrated_eye_scRNA/QC.tsv.gz')
 
 # cell type prediction
-load('~/data/massive_integrated_eye_scRNA/PREDICTIONSMus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features5000__counts__universe__batch__scVIprojectionSO__dims10__preFilter.scEiaDprojected__mindist0.1__nneighbors500.Rdata')
-test_predictions <- data.table::fread('~/data/massive_integrated_eye_scRNA/554065_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
-  mutate(max_pred_prob = rowMaxs(.[,-(31:34)] %>% as.matrix ), 
+load('~/data/massive_integrated_eye_scRNA/PREDICTIONSn_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.1__neighbors-500.Rdata')
+test_predictions <- data.table::fread('~/data/massive_integrated_eye_scRNA/277874_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
+  mutate(max_pred_prob = rowMaxs(.[,-(33:36)] %>% as.matrix ), 
          pred_correct = ifelse(cell_type_id == true_cell_id, 'Correct', 'incorrect'))
+# created by running 'source' on src/make_dotplot_markers.R
+load('~/data/massive_integrated_eye_scRNA/top_markers.Rdata')
+
+# pmid search
+load('~/data/massive_integrated_eye_scRNA/top_marker_pmid.Rdata')
 ```
 
 
 # Introduction
 ## Explosion of single cell transcriptomic atlases
-The  recent introduction of lower cost and high throughput single cell sequencing technology has led to an explosion of research across many fields. As of 2020, over 30 million cells have been sequenced across over 1,000 studies (Svennson Pachter http://www.nxn.se/single-cell-studies) and the average size of each study is nearing 100,000 cells. The retina was used as the source rissue doe one of the earliest works in the high throughput single cell transcriptomics field (Macosko et al) and as of late 2020, over a dozen published studies containing over a million cells have used single cell technology to profile cell type specific gene expression patterns, cell fate trajectory, tissue and cell differentiation, and disease perturbation. 
+The  recent introduction of lower cost and high throughput single cell sequencing technology has led to an explosion of research across many fields. As of November 2020, over 30 million cells have been sequenced across over 1,000 studies and the average size of each study is nearing 100,000 cells [@svenssonCuratedDatabaseReveals2020]. The retina was used as the source tissue in one of the earliest works in the high throughput single cell transcriptomics field and as of late 2020, over a dozen published studies containing over a million cells have used single cell technology to profile cell type specific gene expression patterns, cell fate trajectory, tissue and cell differentiation, and disease perturbation across multiple mammalian organisms [@buenaventuraIdentificationGenesEnriched2019; @clarkComprehensiveAnalysisRetinal2018; @collinCRXExpressionPluripotent2019; @collinDeconstructingRetinalOrganoids2019; @cowanCellTypesHuman2020; @diacouSix3Six6Are2018; @eldredThyroidHormoneSignaling2018; @hengHypoxiaToleranceNorrindeficient2019; @huDissectingTranscriptomeLandscape2019; @logiudiceSinglecellTranscriptionalLogic2019; @lukowskiSinglecellTranscriptomeAtlas2019; @luSingleCellAnalysisHuman2020; @macoskoHighlyParallelGenomewide2015; @menonSinglecellTranscriptomicAtlas2019; @okorenMicroglialFunctionDistinct2019; @pengMolecularClassificationComparative2019; @phillipsNovelApproachSingle2018; @rheaumeSingleCellTranscriptome2018; @ruedaHippoPathwayBlocks2019; @shekharComprehensiveClassificationRetinal2016; @sridharSingleCellTranscriptomicComparison2020; @tranSingleCellProfilesRetinal2019; @voigtMolecularCharacterizationFoveal2019; @voigtSinglecellTranscriptomicsHuman2019; @yanCellAtlasHuman2020]. 
 
 <!-- ## Many researchers use processed count tables for methods development and hypothesis testing -->
 
-While the gene - cell count tables are often made available in repositories like the Gene Expression Omnibus (GEO), there are no requirements to uniformly process the data. This means the count tables cannot be used in cross-study comparisons as even small differences in the computational pipeline (aligner, transcriptome reference, etc.) create study-specific effects. This issue can be addressed only by re-quantifying the data in a uniform environment. Fortunately, due to the continued development of computationally light-weight gene quantification tools into the single-cell space (kbtools, alevin-something), re-quantification does not require massive compute resources. 
+While the gene - cell count tables are often made available in repositories like the Gene Expression Omnibus (GEO), there are no requirements to uniformly process the data. This means the count tables cannot be used in cross-study comparisons as even small differences in the computational pipeline (aligner, transcriptome reference, etc.) create study-specific effects. This issue can be addressed only by re-quantifying the data in a uniform environment. Fortunately, due to the continued development of computationally light-weight gene quantification tools into the single-cell space (e.g kallisto bustools, alevin), re-quantification does not require massive compute resources [@melstedModularEfficientPreprocessing2019; @srivastavaAlevinEfficientlyEstimates2019]. 
 
-Even after re-quantication under identical conditions there remain study specific batch effects due to the variety in single cell technologies used and variation in tissue handling and processing across eajh scientific groups. The single cell community has recognized that removal of these technical (also referred to as batch) effects is a critical issue and have independently developed many tools, though it remains unclear which tools and parameters are optimal for a particular dataset. 
+Even after re-quantification under identical conditions there remain study specific batch effects due to the variety in single cell technologies used and variation in tissue handling and processing across each scientific group. The single cell community has recognized that removal of these technical (also referred to as batch) effects is a critical issue and have independently developed many tools, though it remains unclear which tools and parameters are optimal for a particular dataset [@butlerIntegratingSinglecellTranscriptomic2018; @haghverdiBatchEffectsSinglecell2018; @hieEfficientIntegrationHeterogeneous2019; @johnsonAdjustingBatchEffects2007; @korsunskyFastSensitiveAccurate2019; @liuJointlyDefiningCell2020; @lopezDeepGenerativeModeling2018; @polanskiBBKNNFastBatch2020; @QueryReferenceSinglecell; @simonINSCTIntegratingMillions2020; @stuartComprehensiveIntegrationSingleCell2019; @vandijkRecoveringGeneInteractions2018]. 
 
 <!-- Study specific web portals, should they exist, are silos which only contain the single cell transcriptomes related to their study. There are notable efforts to create web portals (UCSC Single Cell Browser, EBI Single Cell Expression Atlas) that allow for GUI-based viewing of data for most publicly available datasets. However, these again have the shortcoming as the study-specific web portals discussed above in that you still cannot directly compare between independent studies. In these situations it is impossible to compare directly across datasets. When exploring a gene expression pattern, it is crucial to have reproducibility across disparate groups to enhance confidence that effect is biological as bench experiments require large investments in time.  -->
 
@@ -107,7 +114,7 @@ Even after re-quantication under identical conditions there remain study specifi
 
 ## The projectable meta-atlas
 
-We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally using batch correction tools we can create a meta-atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we refer to as the single cell Eye in a Disk or scEiaD) by benchmarking integration outcomes across multiple important single cell RNA-seq processing parameters (batch removal method, number of hyper-variable genes (HVGs), clustering resolution, etc). The benchmarking system we developed uses a wide variety of metrics that we make easily available via the R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can both search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and project their own single cell data onto scEiaD for comparison and rich automatic cell labelling. Also the computational community  can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment. As we believe data re-use is a powerful and efficient approach to facilitate discovery, we provide our meta-atlas code-base and propose general guidelines to optimally create custom meta-atlases.
+We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally using batch correction tools we can create a meta-atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we refer to as the single cell Eye in a Disk or scEiaD) by benchmarking integration outcomes across multiple important single cell RNA-seq processing parameters (batch removal method, number of hyper-variable genes (HVGs), clustering resolution, etc). The benchmarking system we developed uses a wide variety of metrics that we make easily available via the R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can both search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and project their own single cell data onto scEiaD for comparison and rich automatic cell labelling. Also the computational community can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment. As we believe data re-use is a powerful and efficient approach to facilitate discovery, we provide our meta-atlas code-base and propose general guidelines to optimally create custom meta-atlases.
 
 # Results
 
@@ -180,11 +187,11 @@ plot_grid(
 
 ## Further optimization of scVI with grid search and projection
 
-To find the best set of parameters for the creation of scEiaD we did a grid search across key parameters: hyper variable genes (HVG), latent dimensions, and k nearest neighbors. Furthermore we used a recent advance in scVI capability that allows one to build a reference model and project the new cells onto it. We thus built a human-only scVI model and then projected the mouse and macaque data onto it. We then compared the "scVIprojected" against the against the straight scVI across all the previously mentioned parameters. Using scPOP we first saw that the scVIprojection approach generally performed better than running scVI with all of the data. We found the optimal parameters to be 5000 HVG, 10 latent dimensions, and a resolution of 0.6 with the leiden algorithm implemented by PARC (`r fig_cap(name = 'figBenchmark', display = 'cite')`d). We also varied the UMAP projection values of nearest neighbors and minimum distance to qualitatively pick a 2D projection, selecting a minimum distance of 0.1 and 500 nearest neighbors. 
+To find the best set of parameters for the creation of scEiaD we did a grid search across key parameters: hyper variable genes (HVG), latent dimensions, and k nearest neighbors. Furthermore we used a recent advance in scVI capability adapted from scArches that allows one to build a reference model and project the new cells onto it. We built a human-only scVI model and then projected the mouse and macaque data onto it. We then compared the "scVIprojected" against the against the straight scVI across all the previously mentioned parameters. Using scPOP we first saw that the scVIprojection approach generally performed better than running scVI with all of the data. We found the optimal parameters to be 5000 HVG, 10 latent dimensions, and a resolution of 0.6 with the leiden algorithm implemented by PARC (`r fig_cap(name = 'figBenchmark', display = 'cite')`d). We also varied the UMAP projection values of nearest neighbors and minimum distance to qualitatively pick a 2D projection, selecting a minimum distance of 0.1 and 500 nearest neighbors. 
 
 ## High accuracy xgboost ML model built to label unknown cell types
 
-To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of expert labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we built a xgboost-based machine learning model that used half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabelled) and correct a small number of probable mislabels in the truth set (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). 
+To further study cell type specific expression patterning we needed to label the `r format(umapRef %>% nrow() - meta_filter %>% filter(!is.na(CellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabeled cells. Traditionally this is done by clustering the cells, then using cell type specific markers to label the clusters. However, as we had hundreds of thousands of expert labelled cells across `r umapRef %>% filter(!is.na(CellType)) %>% left_join(gse) %>% pull(PMID) %>% unique() %>% length()` studies (`r fig_cap(name = 'fig1', display = 'cite')`a) we built a xgboost-based machine learning model that used half of the labeled cells as a training set (see methods for more details) to train a cell type predictor for scEiaD input. The trained model was used to predict the cell type assignments for all cells in scEiaD. In this manner we both label most cells (cells which cannot be assigned a cell type assignment with a confidence above 0.5 were left unlabeled) and correct a small number of probable mislabels in the truth set (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). 
 
 <!-- ## ML cell type predictor has high accuracy across most cell types -->
 
@@ -195,10 +202,31 @@ The precision recall (PR) curve visualizes the ability of the model to precisely
 <!-- With the wide diversity of the scEiaD we can get a sense on how consistent the retina community is at labelling the major cell types of the retina. By calculating the AUC against each individual cell type and study, we can see which cell types are consistently labeled correctly across most (`r fig_cap(name = 'supFig_PR_cap', display = 'cite')`). Most studies show very similar performance with our ML model. The study with the lowest correspondence between published and predicted label is Macoksko et al; this study is notable as it was the first demonstration of the droplet based scRNA technique.   -->
 
 ```{r figXGboost_umap, fig.width=18, fig.height=13, fig.cap=figXGboost_umap_cap, echo=FALSE, message = FALSE}
-figXGboost_umap_cap <- fig_cap(name='figXGboost_umap', caption =  '')
+figXGboost_umap_cap <- fig_cap(name='figXGboost_umap', caption =  'filler text hello world')
 
 source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
 source('figs_and_tables/make_meta_scatter_umap_plot.R')
+source('figs_and_tables/dotplot.R')
+
+# markers for dotplot
+input <- list()
+input[['dotplot_Gene']] <- top_markers %>%  
+  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE|Micro', cluster), D_KL > 0.2) %>%  
+  group_by(cluster)  %>% 
+  slice_max(med_auc, n =5) %>% 
+  pull(Gene)
+input[['dotplot_groups']] <- c('CellType_predict')
+input[['dotplot_filter_cat']] <- 'CellType_predict'
+input[['dotplot_filter_on']] <- (meta_filter %>%
+                                   filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE|Micro', CellType_predict)) %>% 
+                                   pull(CellType_predict) %>% unique())
+d <- make_dotplot(input, scEiaD_2020_v01, meta_filter, cat_to_color_df)
+dplot <- d  + facet_grid(vars(cluster), scale = 'free_y', space = 'free') + theme(
+  strip.background = element_blank(),
+  strip.text.y = element_blank()
+)
+
+
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
 input[['pt_size_meta']] <- 0
@@ -220,14 +248,14 @@ input[['meta_column']] <- 'CellType_predict'
 input[['pt_size_meta']] <- 1
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
-#input[['meta_filter_cat']] <- 'CellType_predict'
-#input[['meta_filter_on']] <- 'Bipolar Cells'
+input[['meta_filter_cat']] <- 'CellType_predict'
+input[['meta_filter_on']] <- c('AC/HC Precursors','Amacrine Cells','Astrocytes','Bipolar Cells','Cones','Early RPCs','Endothelial','Horizontal Cells','Late RPCs','Microglia','Muller Glia','Neurogenic Cells','Pericytes','PR Precursors','Red Blood Cells','Retinal Ganglion Cells','Rod Bipolar Cells','Rods','RPCs','RPE','Schwann','Tabula Muris')
 ctp2 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
-                                   celltype_predict_labels,
-                                   celltype_labels,
-                                   tabulamuris_predict_labels,
-                                   cluster_labels,
-                                   cat_to_color_df
+                                    celltype_predict_labels,
+                                    celltype_labels,
+                                    tabulamuris_predict_labels,
+                                    cluster_labels,
+                                    cat_to_color_df
 )
 
 input <- list()
@@ -244,19 +272,31 @@ org <- make_meta_scatter_umap_plot(input, mf, meta_filter,
                                    cluster_labels,
                                    cat_to_color_df
 )
-plot_grid(grid.grabExpr(draw(ct_confusion)), 
-          ctp$plot + theme(legend.position = "none"), 
-          ctp2$plot + theme(legend.position = "none") + facet_wrap(~CellType_predict),
-          org$plot + facet_wrap(~organism) + theme(legend.position = "none"), 
-          ncol = 2,
-          labels = c('a', 'b', 'c', 'd'),
-          rel_heights = c(1,0.8)) 
+
+plot_grid(dplot + theme(legend.title = element_text(angle = 90),
+                        axis.text = element_text(size = 8)),
+          plot_grid(ctp$plot + theme(legend.position = "none"), 
+                    ctp2$plot + theme(legend.position = "none") + facet_wrap(~CellType_predict),
+                    grid.grabExpr(draw(ct_confusion)),
+                    org$plot + facet_wrap(~organism) + theme(legend.position = "none"), 
+                    ncol = 2,
+                    labels = c('b', 'c', 'd', 'e'),
+                    rel_heights = c(1,0.8)), 
+          ncol = 2, 
+          rel_widths = c(1,3), 
+          labels = c('a',NULL)) 
 
 ```
 
 ## ML cell type labels result in high study diversity for each cell type
 
 After ML projection of cell type labels from the original `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` labels onto a total of `r meta_filter %>% filter(!is.na(CellType_predict) | !is.na(TabulaMurisCellType_predict)) %>% nrow()` cells we have substantially improved the number of studies per cell type. For example, we went from `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(2)` human studies with labelled Muller Glia to `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(5)` after labelling (`r supTab_cap(name = 'supTab_SAcounts', display = 'cite')`). Overall we go from an average of `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(2) %>% mean()` studies per human cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(5) %>% mean()` and `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(4) %>% mean()` studies per mouse cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(7) %>% mean()` after transferring the cell type labels. 
+
+<!-- # REWRITE? (UNFORTUNATELY) FOR NEW DATA WHEN(?) IT COMES IN -->
+As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a), 37 had one or more citations in the gene/celltype search (table X) and 47 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(med_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
+
+The four genes with zero hits were IGSF21 (Bipolar Cells), BTBD8 (Bipolar Cells), FRZB (Muller Glia), and TAGLN3 (Retinal Ganglion Cells). In a more exhaustive hand literature search we find that IGSF21 is associated with Diabetic Retinopathy in a Han Chinese population (https://pubmed.ncbi.nlm.nih.gov/27607899/). BTBD8 contains BTB/POZ domains associated with transcription factor protein-protein interactions (https://www.spandidos-publications.com/10.3892/ijmm.13.1.193). FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2330018/). TAGLN3 has been previously reported in chick to be expressed in developing Retinal Ganglion Cells (https://onlinelibrary.wiley.com/doi/abs/10.1002/cne.24241). 
+<!-- # REWRITE? (UNFORTUNATELY) FOR NEW DATA WHEN(?) IT COMES IN -->
 
 ## The scVI-based scEiaD UMAP projection blends batches while separating cell types
 
@@ -272,9 +312,8 @@ The photoreceptors (cones and rods) of the retina which are responsible for colo
 
 ## Projection of new data onto scEiaD 
 
-The hard work of creating this resource can be leveraged by the wider community with a few relatively simple steps. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our scVI model, and 3. following the jupyter notebook we provide as supplemental file BLOOP. We demonstrate by adding new retina data to scEiaD that was published after our last data pull. 
+The hard work of creating this resource can be leveraged by the wider community with a few relatively simple steps. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our scVI model, and 3. following the R notebook we provide as supplemental file BLOOP and at http://www.ZENODOSOMETHING. We demonstrate by adding new retina data to scEiaD that was published after our last data pull.....
 
-##
 <!-- ## Pan mouse as non-ocular reference to improve retina-specific gene search -->
 
 <!-- Do some sloppy/easy thing where we identify retina specific genes by searching across the TM data? -->
@@ -283,11 +322,11 @@ The hard work of creating this resource can be leveraged by the wider community 
 
 ## Reproduciblity
 
-The full Snakemake pipeline that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad. The publication commit is BLOOP. Furthermore, the repository has been deposited at zenodo under BLOOP. We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide versions as the supplementary file "R_session_info.txt"
+The full Snakemake pipeline that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad [@kosterSnakemakeScalableBioinformatics2012]. The publication commit is BLOOP. Furthermore, the repository has been deposited at Zenodo under BLOOP. We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide package versions as the supplementary file "R_session_info.txt"
 
 ## Quantification of gene counts
 
-Kallisto (0.46.2) was the pseudoaligner. To reference transcriptomes used to build the kallisto index were the Gencode "gencode.vM25.annotation.gtf.gz" and "gencode.v35.annotation.gtf.gz" for mouse and human, respectively. The Ensembl release 99 "Macaca_mulatta.Mmul_10.99.gtf.gz" was used for the macaque transcriptome, For the relatively few single ended samples, the params "--single -l 200 -s 30" were used for kallisto quant. Otherwise the "--bias" flag was added. For the droplet-based samples, bustools (0.39.4) was used to extract the single cell barcodes, sort the output, and fix small barcoding errors.  
+Kallisto (0.46.2) was the pseudoaligner [@brayNearoptimalProbabilisticRNAseq2016]. The reference transcriptomes used to build the kallisto index were the Gencode "gencode.vM25.annotation.gtf.gz" and "gencode.v35.annotation.gtf.gz" for mouse and human, respectively [@harrowGENCODEReferenceHuman2012; @jGENCODEReferenceHuman2012]. The Ensembl release 101 "Macaca_mulatta.Mmul_101.gtf.gz" was used for the macaque transcriptome [@yatesEnsembl20202020]. For the relatively few single ended samples, the params "--single -l 200 -s 30" were used for kallisto quant. Otherwise the "--bias" flag was added. For the droplet-based samples, bustools (0.39.4) was used to extract the single cell barcodes, sort the output, and fix barcoding errors [@melstedBarcodeUMISet2019].  
 
 ## Intersection of gene names between mouse, macaque, and human
 
@@ -299,29 +338,29 @@ As we noticed that several retina marker genes (WHICH ONES!!!!) had unusually lo
 
 ## Remove empty droplets and further QC.
 
-After bustools count, we used R (3.6.2) to remove empty droplets. The BUSpaRse package was used to input the bustools counts mtx file. The DropletUtils package with the "barcodeRanks" function was used to automatically detect the inflection point in the barcode count ranks that distinguishes the likely empty droplets. We then removed cells with percent mitochondrial reads of >10%. After merging the individual count matrices into one sparse matrix, we created a Seurat version 3 object and removed cells with fewer than 200 detected unique genes, and for the droplet data, more than 3000 detected genes (these are likely to be doublets). 
+After bustools count, we used R (3.6.2) to remove empty droplets. The BUSpaRse package was used to input the bustools counts mtx file. The DropletUtils package with the "barcodeRanks" function was used to automatically detect the inflection point in the barcode count ranks that delineates the likely empty droplets [@lunEmptyDropsDistinguishingCells2019]. We then removed cells with percent mitochondrial reads of >10%. After merging the individual count matrices into one sparse matrix, we created a Seurat version 3 object and removed cells with fewer than 200 detected unique genes, and for the droplet data, more than 3000 detected genes (these are likely to be doublets) [@butlerIntegratingSinglecellTranscriptomic2018]. 
 
 ## Normalization and batch effect correction
 
-We tested several gene count normalization approaches as we were not certain which would produce an optimal outcome: standard (default Seurat, library size normalization, then log transform), sqrt (same, but with sqrt normalization), libSize (omit the log or sqrt normalization), scran, SCT from Seurat, and for scVI, no normalization (counts). Our R implementation of the normalization approaches as well as how we constructed the Seurat v3 object can be found in the supplementary file "make_seurat_obj_functions.R"
+We tested several gene count normalization approaches as we were not certain which would produce an optimal outcome: standard (default Seurat, library size normalization, then log transform), sqrt (same, but with sqrt normalization), libSize (omit the log or sqrt normalization), scran, SCT from Seurat, and for scVI, no normalization (counts) [@lunStepbystepWorkflowLowlevel2016]. Our R implementation of the normalization approaches as well as how we constructed the Seurat v3 object can be found in the supplementary file "make_seurat_obj_functions.R"
 
 ## Batch normalization under a grid search procedure
 
-We tested `r methods` against 2000 HVGs, the different gene count normalization procedures discussed above, and both 8 and 30 outputted batch corrected latent dimensions. The latent dimensions are the input for clustering, the 2D UMAP visualization, and the xgboost machine learning to transfer cell type labels to unlabelled cells. We were unable to run every method successfully with every normalization method. Magic could not complete with the standard or libSize normalization. CCA could not complete with the libSize normalization. We also tried the DESC, liger, and Conos batch corrections methods but were unable to get them to work reliably so they were not included. The batch correction step implementation can be found the supplementary file "merge_methods.R".
+We tested `r methods` against 2000 HVGs, the different gene count normalization procedures discussed above, and both 8 and 30 outputted batch corrected latent dimensions. The latent dimensions are the input for clustering, the 2D UMAP visualization, and the xgboost machine learning to transfer cell type labels to unlabelled cells. We were unable to run every method successfully with every normalization method. Magic could not complete with the standard or libSize normalization. CCA could not complete with the libSize normalization. We also tried the DESC, liger, and Conos batch corrections methods but were unable to get them to work reliably so they were dropped. The batch correction step implementation can be found the supplementary file "merge_methods.R".
 
 ## Clustering and UMAP
-Louvain-Jaccard clustering against the batch corrected latent dimensions used the Seurat implementation. We tried the k-nearest neighbors (knn) parameters 5, 7, and 10 (where 5 gives more clusters than 10). We also used the leiden algorithm as implemented by PARC with a resolution of 0.6 and 0.8. These two resolutions were chosen as they roughly gave the same number of clusters at the Seurat Louvain-Jaccard aprroach with a knn 7. 
+Louvain-Jaccard clustering against the batch corrected latent dimensions used the Seurat implementation [@blondelFastUnfoldingCommunities2008]. We tried the k-nearest neighbors (knn) parameters 5 and 7 (where 5 gives more clusters than 7). We also used the leiden algorithm as implemented by PARC with a resolution of 0.6 and 0.8 (higher results in more clusters) [@traagLouvainLeidenGuaranteeing2019; @stassenPARCUltrafastAccurate2020]. These two resolutions were chosen as they roughly gave the same number of clusters at the Seurat Louvain-Jaccard aprroach with a knn 7. 
 
-The UMAP visualization was calculated with the Seurat "RunUMAP" using the uwot R package. We altered the min.dist parameter with 0.001 and 0.1 and tried n.neighbors across 15, 30, 100, and 500. A smaller min.dist value gives "tighter" groupings while a higher number of n.neighbors uses a larger number of near cells to calculate the global positioning. 
+The UMAP visualization was calculated with the Seurat "RunUMAP" using the uwot R package [@mcinnesUMAPUniformManifold2020]. We altered the min.dist parameter with 0.001 and 0.1 and tried n.neighbors across 15, 30, 100, and 500. A smaller min.dist value gives "tighter" groupings while a higher number of n.neighbors uses a larger number of near cells to calculate the global positioning. 
 
 ## Benchmarking 
 
-We wrote the scPOP R package to unify the LISI and Silhouette metrics from Harmony and kBet, respectively, along with NMI and ARI. LISI and Silhouette require a dense matrix, which is a problem for our data as a 1e6 x 20,000 matrix cannot fit even in a 1.5 TB memory node. We down-sampled the dataset to ~100,000 cells, taking care to keep rarer cell types for the LISI and Silhouette benchmarking.
+We wrote the scPOP R package to unify the LISI and Silhouette metrics from Harmony and kBet, respectively, along with NMI and ARI [@buttnerTestMetricAssessing2019; @korsunskyFastSensitiveAccurate2019]. LISI and Silhouette require a dense matrix, which is a problem for our data as a 7e5 x 20,000 matrix cannot fit in a 1.5 TB memory node. We down-sampled the dataset to ~100,000 cells, taking care to keep all rarer cell types for the LISI and Silhouette benchmarking.
 
-To merge these metrics into a single score, we Z scale each and sum them. scPOP produces both tables and visualizations allowing the user to quickly see both the interplay of batch mixing and cluster/cell type separation and the overall performance. If a user wishes to prioritize batch mixing or cluster/cell type separation we let the user provide a custom batch/cluster-cell type scaling value (1 is the default). 
+To merge these metrics into a balanced single score, we Z scale each and sum them. scPOP produces both tables and visualizations allowing the user to quickly see both the interplay of batch mixing and cluster/cell type separation and the overall performance. If a user wishes to prioritize batch mixing or cluster/cell type separation we let the user provide a custom batch/cluster-cell type scaling value (1 is the default). 
 
 ## Multi-step doublet removal
-While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there were likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a DoubletDetect and scrublet score more than 4 standard deviations above the mean. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
+While we removed droplet-based cells with more than 3,000 transcripts as these are highly likely to be doublets (more than one cell per droplet) there were likely many more doublets. We ran DoubletDetect and scrublet and calculated the distribution of DoubletDetect and scrublet scores across all clusters and removed clusters with a score in both metrics greather than 4 standard deviations above the mean [@adamgayosoJonathanShorDoubletDetectionDoubletdetection2020; @wolockScrubletComputationalIdentification2019]. This removed another `r format((umapRef %>% nrow() %>% as.integer()) - (meta_filter %>% nrow() %>% as.integer()), big.mark=",", scientific=FALSE)` cells, leaving `r format((meta_filter %>% nrow()) %>% as.integer(), big.mark=",", scientific=FALSE)` in total. 
 
 ## xgboost based cell type model
 
@@ -331,9 +370,16 @@ VINAY WRITE
 
 <!-- Our pseudo-bulk differential testing was inspired by the OSCA guide. We computed differential tests for: cell type (published/transferred) against remaining cell types, celltype (published/transferred) pairwise against other individual celltype (published/transferred), specific cluster against remaining clusters, specific cluster against different individual cluster (pair-wise). Briefly, we grouped cells by the categories (e.g. each unique celltype (transferred) - study combination) and summed all gene counts. After summing the scores, we built a model matrix as 0 ~ categories + organism to remove any species specific effects. When then used the edgeR "estimateDisp" and tested the fit with "glmQLFit" and the parameter "robust = TRUE". Specific contrasts (e.g. Rods vs Cones) were differentially tested with "glmQLFTest". -->
 
-## trajectory
+## Marker gene identification
 
-DAVID
+scran findmarkers (wilcox test) along with singleCellHaystack. Filtering to keep genes that FDR < 1 or
+
+## Trajectory
+
+To calculate continuous trajectories for individual terminally differentiated retina cell types, we used the Slingshot R package [@streetSlingshotCellLineage2018]. Slingshot first uses the clusters to build a minimum spanning tree to identify the global lineage structure. We specified the starting cluster by identifying the cluster for human and mouse with a high proportion of the early RPC cells and specified the terminal clusters that were predominantly a terminal retina cell type (Amacrine, Bipolar, Cones, Horizontal, Muller Glia, Retinal Ganglion, Rods). XXXX trajectories were built and we hand-pruned out redundant or non-sensical (e.g. Photoreceptor precursors to Cone to Rod Bipolar) trajectories, leaving XXXX trajectories for downstream analysis. 
+To identify major points of gene expression changes during differentiation we built linear models across XXXXXXX bins. 
+
+
 
 ## velocity
 
@@ -341,7 +387,7 @@ VINAY
 
 ## Projection of new data onto scEiaD
 
-DAVID
+
 
 # Conclusion
 
@@ -376,7 +422,7 @@ supFig_benchmark_cap <- supFig_cap(name='supFig_benchmark', caption =  'Performa
 source('figs_and_tables/fig2__integrationPerf.R')
 cowplot::plot_grid(
   cowplot::plot_grid(lisi + theme(legend.position="none"), silhouette, NULL, rel_widths = c(1,1,0.2), nrow = 1, labels = c('a' ,'b')), 
-  cowplot::plot_grid(ari, nmi, pcr, legend, rel_widths = c(1,1, 1, 0.2), ncol = 4, labels = c('c', 'd', 'e')), 
+  cowplot::plot_grid(ari, nmi, legend, rel_widths = c(1,1, 1, 0.2), ncol = 4, labels = c('c', 'd')), 
   nrow = 2)
 ```
 
@@ -415,7 +461,7 @@ Spacing
 
 
 ```{r supFig_PR, fig.width=12, fig.height=10,  fig.cap=supFig_PR_cap, echo=FALSE, message = FALSE}
-supFig_PR_cap <- supFig_cap(name='supFig_PR', caption =  '')
+supFig_PR_cap <- supFig_cap(name='supFig_PR', caption =  'Precision recall curves for our xgboost cell type predictor model across each cell type predicted')
 
 source('figs_and_tables/sup_fig__xgboost_PR.R')
 pr_split_curves
@@ -429,7 +475,7 @@ Spacing
 
 
 ```{r supTab_AUCxgboost, fig.cap=supTab_AUCxgboost_cap, echo=FALSE, message = FALSE}
-supTab_AUCxgboost_cap <- supTab_cap(name='supTab_AUCxgboost', caption =  'TEXT')
+supTab_AUCxgboost_cap <- supTab_cap(name='supTab_AUCxgboost', caption =  'Area under the precision recall curve (AUC) for each cell type, split by study')
 
 #source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
 fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 3), size = 8, part = 'all')
@@ -483,11 +529,11 @@ input[['meta_column_transform']] <- 'None'
 #input[['meta_filter_cat']] <- 'CellType_predict'
 #input[['meta_filter_on']] <- 'Bipolar Cells'
 ctp3 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
-                                   celltype_predict_labels,
-                                   celltype_labels,
-                                   tabulamuris_predict_labels,
-                                   cluster_labels,
-                                   cat_to_color_df
+                                    celltype_predict_labels,
+                                    celltype_labels,
+                                    tabulamuris_predict_labels,
+                                    cluster_labels,
+                                    cat_to_color_df
 )
 
 

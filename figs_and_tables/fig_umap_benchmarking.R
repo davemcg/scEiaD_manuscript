@@ -27,7 +27,7 @@ umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsi
   # attach colors to cell types
   cell_types <- umapFig %>% 
     pull(CellType) %>% unique() %>% sort()
-  type_val <- setNames(c(pals::brewer.set2(8),pals::alphabet())[1:length(cell_types)], cell_types)
+  type_val <- setNames(c(pals::cols25(),pals::alphabet())[1:length(cell_types)], cell_types)
   type_col <- scale_colour_manual(values = type_val)
   type_fill <- scale_fill_manual(values = type_val)
   # cell type known

@@ -1,117 +1,21 @@
-library(ggplot2)
-library(Cairo)
-library(scattermore)
-library(pals)
-library(ggrepel)
-library(patchwork)
-library(purrr)
-library(pool)
-library(RSQLite)
-library(dplyr)
-library(magick)
-library(stringr)
 library(ggtext)
-load('~/data/massive_integrated_eye_scRNA/Mus_musculus_Macaca_fascicularis_Homo_sapiens__0__5000__counts__universe__batch__scVIprojectionSO__dims10__0.6__500__0.1__CellType_predict.sceWilcox_summary.Rdata')
-#genes <- c('ENSG00000144834','ENSG00000139970','ENSG00000109846','ENSG00000026025','ENSG00000067715','ENSG00000123307','ENSG00000139053','ENSG00000143774','ENSG00000105372','ENSG00000130066','ENSG00000104435','ENSG00000139970','ENSG00000050165','ENSG00000135821','ENSG00000104435','ENSG00000131711','ENSG00000016082','ENSG00000198668','ENSG00000149489','ENSG00000129535','ENSG00000105372','ENSG00000140988')
-
-#markers <- scEiaD_2020_v01 %>% tbl('genes') %>% collect() %>% mutate(ENS = str_extract(Gene, 'ENSG\\d+')) %>% filter(ENS %in% genes) %>% pull(Gene)
-
-# marker_info_DT <- marker_list %>% 
-#   bind_rows(.id = 'cluster') %>% 
-#   group_by(cluster) %>% 
-#   #top_n(5, L4) %>% 
-#   filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro', cluster)) %>% 
-#   filter(!Gene %in%
-#            (marker_list %>% 
-#            bind_rows(.id = 'cluster') %>% 
-#            group_by(cluster) %>% 
-#            top_n(5, L4) %>% 
-#            filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro', cluster)) %>% 
-#            group_by(Gene) %>% 
-#            summarise(Count = n()) %>% 
-#            arrange(-Count) %>% 
-#            filter(Count > 1) %>% 
-#            pull(Gene))) %>% 
-#   ungroup() %>% 
-#   group_by(cluster) %>% 
-#   top_n(3, L4)  
-
-marker_list <- list()
-for (i in (meta_filter$CellType_predict %>% unique())){
-  if (is.na(i)){
-    next()
-  } else {
-    var <- i
-    print(var)
-    test <- glue("%-1*{var}%")
-    ct <- glue("%{var}%")
-    markers <- scEiaD_2020_v01 %>% 
-      tbl('PB_results') %>% 
-      filter(PB_Test == 'Pairwise CellType (Predict) against CellType (Predict)', 
-             test %like% (!!ct), 
-             logCPM > 5)  %>% 
-      mutate(logFC = case_when(comparison %like% (!!test) ~ abs(logFC), 
-                               TRUE ~ logFC)) %>%  group_by(Gene) %>% 
-      summarise(L1 = sum(logFC > 1), L4 = sum(logFC > 4), 
-                Diff = mean(logFC)) %>% 
-      arrange(-Diff, -L4) %>% 
-      collect()
-    marker_list[[var]] <- markers
-  }
-}
-
-marker_info <-  markers_summary %>% 
-  #filter(pval < 1) %>% 
-  group_by(cluster) %>% 
-  #top_n(4, med_auc) %>% 
-  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|RPE|Astro', cluster)) %>% 
-  data.frame() %>% 
-  left_join(scEiaD_2020_v01 %>% 
-              tbl('genes') %>% 
-              collect() %>% 
-              mutate(gene = str_extract(Gene, 'ENSG\\d+'))) %>% 
-  left_join(marker_list %>% 
-               bind_rows(.id = 'cluster') %>% 
-               group_by(cluster) %>% 
-               #top_n(5, L4) %>% 
-               filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro', cluster))) %>% 
-  left_join(scEiaD_2020_v01 %>% tbl('haystack') %>% collect())
-
-genes <- marker_info$Gene %>% unique()
-
-exp_stats <- scEiaD_2020_v01 %>% tbl('grouped_stats') %>%
-  filter(Gene %in% genes) %>%
-  group_by_at(vars(one_of(c('Gene', grouping_features)))) %>%
-  summarise(cpm = sum(cpm * cell_exp_ct) / sum(cell_exp_ct),
-            cell_exp_ct = sum(cell_exp_ct, na.rm = TRUE)) %>%
-  collect() %>%
-  tidyr::drop_na() %>%
-  left_join(., meta_filter %>%
-              group_by_at(vars(one_of(grouping_features))) %>%
-              summarise(Count = n())) %>%
-  mutate(cell_exp_ct = ifelse(is.na(cell_exp_ct), 0, cell_exp_ct)) %>%
-  mutate(`%` = round((cell_exp_ct / Count) * 100, 2),
-         Expression = round(cpm * (`%` / 100), 2)) %>%
-  select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
-  arrange(-Expression) 
-
-marker_info %>% left_join(exp_stats %>% dplyr::rename(cluster = CellType_predict))
-
-# marker_info %>% left_join(exp_stats %>% dplyr::rename(cluster = CellType_predict)) %>% filter((FDR < 1 |  med_auc > 0.4 | D_KL > 0.5), D_KL > 0.1,`%` > 30) %>% filter(cluster == 'Horizontal Cells')
-
+library(glue)
 make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
-  ### this makes it a little easier to test
+  # ### this makes it a little easier to test
   # input <- list()
   # input[['dotplot_Gene']] <- markers
   # input[['dotplot_groups']] <- c('CellType_predict')
   # #input[['dotplot_filter_cat']] <- 'CellType_predict'
-  # #input[['dotplot_filter_on']] <- (meta_filter %>% 
+  # #input[['dotplot_filter_on']] <- (meta_filter %>%
   # #                                   filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|RPE|Astro', CellType_predict)) %>% pull(CellType_predict) %>% unique())
   # db <- scEiaD_2020_v01
-  
+  # 
   gene <- input$dotplot_Gene
   grouping_features <- input$dotplot_groups
   
+  # ct order
+  ct_order <- data.frame(CT = c('Cones','Rods','RPE', 'Retinal Ganglion Cells', 'Astrocytes','Amacrine Cells','Bipolar Cells','Rod Bipolar Cells','Horizontal Cells','Muller Glia', 'Microglia'),
+                         Order = c(1,2,3,4,5,6,7,8,9,10, 11))
   if (input$dotplot_filter_cat != ''){
     dotplot_data <- db %>% tbl('grouped_stats') %>%
       filter(Gene %in% gene) %>%
@@ -137,8 +41,6 @@ make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
     mutate(cell_exp_ct = ifelse(is.na(cell_exp_ct), 0, cell_exp_ct)) %>%
     mutate(`%` = round((cell_exp_ct / Count) * 100, 2),
            Expression = cpm * (`%` / 100)) %>%
-    filter(!is.na(Count),
-           `%` > 2) %>%
     select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
     filter(!is.na(Gene))
   #meanE <- dotplot_data %>% group_by(Gene) %>% summarise(meanE = mean(Expression))
@@ -157,50 +59,33 @@ make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
                                 TRUE ~ Column))
   }
   
-  # cluster
-  # make data square to calculate euclidean distance
-  # NOTE: pivot_wider only in tidyr >=1.0.0
-  mat <- dotplot_data %>%
-    select(Gene,Group1, Column, Expression) %>%  # drop unused columns to faciliate widening
-    tidyr::pivot_wider(names_from = Column, values_from = Expression) %>%
-    mutate(id_col = paste(Gene, Group1, sep = '-' )) %>%
-    select(Gene, Group1, id_col, everything()) %>%
-    as.data.frame() # make df as tibbles -> matrix annoying
-  row.names(mat) <- mat$id_col  # put gene in `row`
-  mat <- mat %>% select(-colnames(mat)[1:3]) #drop gene column as now in rows; Has to be this way for edge case  of having only one row
-  mat[is.na(mat)] <- 0
-  row.names(mat) <- gsub('\\(ENSG\\d+\\)','', row.names(mat)) %>% gsub(' -','-', .) 
-  # if(nrow(mat) ==1 | ncol(mat) ==1) {# in some cases
-  #   h_clust <- list()
-  #   h_clust[['labels']] <- rownames(mat)
-  #   h_clust[['order']] <- 1:nrow(mat)
-  #   v_clust <- list()
-  #   v_clust[['labels']] <- colnames(mat)
-  #   v_clust[['order']] <- 1:ncol(mat)
-  # }else{
-  #   h_clust <- hclust(dist(mat %>% as.matrix())) # hclust with distance matrix
-  #   v_clust <- hclust(dist(mat %>% as.matrix() %>% t())) # hclust with distance matrix
-  # }
+  
   dotplot <- dotplot_data %>%
-    left_join(marker_info %>% left_join(cat_to_color_df %>% 
-                                          filter(meta_category == 'CellType_predict') %>% 
-                                          select(cluster = value, gcolor = color)) %>% 
-                select(Gene, gcolor)) %>% 
+    left_join(top_markers %>% 
+                filter(Gene %in% (!!gene)) %>% 
+                left_join(cat_to_color_df %>% 
+                            filter(meta_category == 'CellType_predict') %>% 
+                            select(cluster = value, gcolor = color)) %>% 
+                select(Gene, gcolor, cluster)) %>% 
     mutate(Gene = gsub('\\(.*)','', Gene) %>% gsub(' ','', .)) %>% 
-    # mutate(Gene = factor(Gene, levels = {h_clust$labels[h_clust$order]} %>%
-    #                        str_split('-') %>% sapply(function(x) x[1]) %>% unique ),
-    #        Column = factor(Column %>% str_replace_all(':',' ') , levels = v_clust$labels[v_clust$order] %>%
-    #                          str_replace_all(':', ' '))) %>% 
     left_join(cat_to_color_df %>% 
                 filter(meta_category == 'CellType_predict') %>% 
                 select(Group1 = value, color)) %>% 
-    
-    mutate(Column = glue("<b style='color:{color}'>{Group1}</b>"),
-           Gene = glue("<b style='color:{gcolor}'>{Gene}</b>")) %>%     
+    left_join(ct_order, by = c('Column' = 'CT')) %>% 
+    left_join(ct_order %>% mutate(Order2 =rev(Order)) %>% select(CT, Order2), by = c('cluster' = 'CT')) %>% 
+    mutate(Column = glue("<b style='color:{color}'>{Group1}</b>" %>% as.character), 
+           Gene = glue("<b style='color:{gcolor}'>{Gene}</b>")) %>% 
+    ungroup() %>% 
+    mutate(cluster = fct_reorder(cluster, Order2),
+           Column = fct_reorder(Column, Order)) %>% 
+    # Gene = fct_reorder(Gene, as.factor(cluster))) %>%     
     ggplot(aes(x=Column, y = Gene, size = `%`, color = Expression)) +
     geom_point() + scale_radius(range=c(0, 10)) +
     cowplot::theme_cowplot() +
-    scale_color_viridis_c(option = 'magma') +
+    scale_color_viridis_c(option = 'magma', guide = guide_legend(override.aes = list(size=10), label.position = "bottom",
+                                                                 label.theme = element_text(angle = 90, hjust = 0.5, vjust = 0.5))) +
+    scale_size_area(guide = guide_legend(label.position = "bottom",
+                                         label.theme = element_text(angle = 90, hjust = 0.5, vjust = 0.5))) +
     theme(axis.line  = element_blank(),
           axis.ticks = element_blank()) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
@@ -209,87 +94,7 @@ make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
     #coord_flip() + 
     theme(axis.text.y.right =  element_markdown(),
           axis.text.x = element_markdown(angle = 45, vjust = 1)) +
-    theme(plot.margin=unit(c(0.5,0,0,3),"cm"))
-  # # bar plot of group counts
-  # ct <- dotplot_data %>%
-  #   mutate(Gene = factor(Gene, levels = {h_clust$labels[h_clust$order]} %>%
-  #                          str_split('-') %>% sapply(function(x) x[1]) %>% unique ),
-  #          Column = factor(Column %>% str_replace_all(':',' ') , levels = v_clust$labels[v_clust$order] %>%
-  #                            str_replace_all(':', ' '))) %>%
-  #   ggplot(aes(x=Column, y = Count)) +
-  #   geom_bar(stat='identity', width = 0.5) + coord_flip() +
-  #   theme_void()
-  # dp_legened <- get_legend(dotplot)
-  # dotplot <- dotplot+
-  #   theme(axis.ticks = element_blank(), axis.text.x= element_text(angle = -45), legend.position = 'none')
-  # # labels
-  # order <- left_join(tibble::enframe(v_clust$labels[v_clust$order] , value = 'Column'),
-  #                    dotplot_data) %>%
-  #   mutate(Column = Column %>% str_replace_all(':', ' '))
-  # 
-  # group1_labels_df <- order %>% inner_join(cat_to_color_df %>%
-  #                                            filter(meta_category ==grouping_features[1]) %>%
-  #                                            rename(Group1=value)) %>% arrange(Group1)
-  # group1_labels <- ggplot(group1_labels_df) +
-  #   geom_tile(aes(x = Column, y = 1, fill = Group1)) +
-  #   scale_fill_manual(name = grouping_features[1],
-  #                     values = unique(group1_labels_df$color) )+
-  #   theme_nothing() +
-  #   aplot::xlim2(dotplot) +
-  #   coord_flip()
-  # # remove legend if same size as matrix as will be HUGE
-  # if ((dotplot_data$Group1 %>% unique() %>% length()) == ncol(mat)) {
-  #   group1_legend <- NULL
-  # } else {
-  #   group1_legend <- plot_grid(get_legend(group1_labels + theme(legend.position="bottom")))
-  # }
-  # 
-  # if (length(grouping_features) == 2){
-  #   
-  #   group2_labels_df <- order %>% inner_join(cat_to_color_df %>%
-  #                                              filter(meta_category ==grouping_features[2]) %>%
-  #                                              rename(Group2=value)) %>% arrange(Group2)
-  #   group2_labels <- ggplot(group2_labels_df) +
-  #     geom_tile(aes(x = Column, y = 1, fill = Group2)) +
-  #     scale_fill_manual(name = grouping_features[2],
-  #                       values = unique(group2_labels_df$color) )+
-  #     theme_nothing() +
-  #     #aplot::xlim2(dotplot) +
-  #     coord_flip()
-  #   if ((dotplot_data$Group2 %>% unique() %>% length()) == ncol(mat)) {
-  #     group2_legend <- NULL
-  #   } else {
-  #     group2_legend <- plot_grid(get_legend(group2_labels + theme(legend.position="bottom")))
-  #   }
-  #   
-  #   # group2_labels +
-  #   #   group1_labels +
-  #   #   dotplot +
-  #   #   group2_legend +
-  #   #   group1_legend +
-  #   #   plot_layout(ncol= 1, heights = c(0.1,0.1, 1, 0.1, 0.2))
-  #   
-  #   
-  #   top <- dotplot |
-  #     ct |
-  #     group1_labels |
-  #     group2_labels|
-  #     plot_spacer() |
-  #     dp_legened |plot_spacer() |plot_layout(nrow = 1, widths = c(1,0.1, .05,.05,.05,.05,.05))
-  #   bottom <- (group1_legend +plot_spacer())/plot_spacer()/group2_legend
-  #   top/plot_spacer()/bottom +plot_layout(ncol = 1, heights = c(1,.05, .2))
-  #   
-  # } else {
-  #   # group1_labels +
-  #   #   dotplot +
-  #   #   group1_legend +
-  #   #   plot_layout(nrow= 1, heights = c(0.1, 1, 0.1))
-  #   top <- dotplot |
-  #     ct |
-  #     group1_labels |
-  #     plot_spacer() |
-  #     dp_legened |plot_spacer() | plot_layout(nrow = 1, widths = c(1,0.1, .05,.05, .05,.05))
-  #   top/plot_spacer() / group1_legend +plot_layout(ncol = 1, heights = c(1,.05, .2))
-  # }
-  dotplot
+    theme(plot.margin=unit(c(0.5,0,0,0.5),"cm"))
+  
+  return(dotplot)
 }

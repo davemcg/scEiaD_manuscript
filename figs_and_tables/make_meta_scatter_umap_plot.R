@@ -13,13 +13,13 @@ library(magick)
 library(stringr)
 library(fst)
 
-tabulamuris_predict_labels <-scEiaD_2020_v01 %>% tbl('tabulamuris_predict_labels') %>% collect
+tabulamuris_predict_labels <-scEiaD_2020_v01 %>% tbl('tabulamuris_predict_labels') %>%  collect
 celltype_predict_labels <-scEiaD_2020_v01 %>% tbl('celltype_predict_labels') %>% 
   mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
                                       CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
                                       TRUE ~ CellType_predict)) %>% collect
-celltype_labels <-scEiaD_2020_v01 %>% tbl('celltype_labels') %>% collect
-cluster_labels <-scEiaD_2020_v01 %>% tbl('cluster_labels')
+celltype_labels <-scEiaD_2020_v01 %>% tbl('celltype_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * -1, UMAP_2 = UMAP_2 * -1) 
+cluster_labels <-scEiaD_2020_v01 %>% tbl('cluster_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * -1, UMAP_2 = UMAP_2 * -1) 
 mf <- meta_filter 
 
 # generate color_mappings
@@ -33,7 +33,8 @@ meta_filter <- meta_filter %>% mutate(SubCellType = tidyr::replace_na(SubCellTyp
 
   
 map_color <- function(column, meta_filter){
-  master_colorlist <- c(pals::polychrome()[3:length(pals::polychrome())], pals::alphabet2())
+ # master_colorlist <- c(pals::polychrome()[3:length(pals::polychrome())], pals::alphabet2())
+  master_colorlist <- c(pals::cols25()[1:23],pals::alphabet())
   values <- meta_filter %>% pull(!!column) %>% unique %>% sort
   if(length(values) > length(master_colorlist) ){
     r= round(length(values) / length(master_colorlist)) +1
@@ -186,7 +187,7 @@ celltype_predict_labels <- celltype_predict_labels %>%
            case_when(CellType_predict %in% 
                        c('RPE', 'Endothelial','Choriocapillaris','Artery', 'Vein', 'Melanocytes') ~ 'Connective', 
                      TRUE ~ CellType_predict)) %>% 
-  group_by(CellType_predict, TechType) %>% 
+  group_by(CellType_predict) %>% 
   summarise(UMAP_1 = mean(UMAP_1), UMAP_2 = mean(UMAP_2)) %>% 
   filter(!CellType_predict %in% c('B-Cell','T-Cell','Smooth Muscle Cell', 'AC/HC_Precurs', 'Red Blood Cells'))
 

@@ -31,8 +31,9 @@ dagified <- dagify('counts' ~ 'fastq',
                    'DiffTesting' ~ 'projectedCellType',
                    'DiffTesting' ~ 'CellType',
                    'DiffTesting' ~ 'cluster',
-                   'DiffTesting' ~ 'LatentDims',
                    'projectedCellType' ~ 'LatentDims',
+                   'Trajectory' ~ 'projectedCellType',
+                   'Trajectory' ~ 'LatentDims',
                    'projectedCellType' ~ 'CellType')
 
 tidy_dagitty(dagified)
