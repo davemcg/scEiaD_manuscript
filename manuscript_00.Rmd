@@ -312,6 +312,8 @@ The hard work of creating this resource can be leveraged and extended by the wid
 
 Projection of new data onto scEiaD potentially allows for semi-direct comparison of other species, *in vitro* systems, and pharamacologic / mutational perturbation of mammalian retina cells. 
 
+We demonstrate with a provided iPSC-based RPE cell line that we sequenced that non-tissue can be projected onto the scEiaD
+
 <!-- ## Pan mouse as non-ocular reference to improve retina-specific gene search -->
 
 <!-- Do some sloppy/easy thing where we identify retina specific genes by searching across the TM data? -->
@@ -320,19 +322,19 @@ Projection of new data onto scEiaD potentially allows for semi-direct comparison
 
 ## Reproduciblity
 
-The full Snakemake pipeline that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad [@kosterSnakemakeScalableBioinformatics2012]. The publication commit is BLOOP. Furthermore, the repository has been deposited at Zenodo under BLOOP. We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide package versions as the supplementary file "R_session_info.txt"
+The set of Snakemake pipelines that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad [@kosterSnakemakeScalableBioinformatics2012]. The publication commit is BLOOP. Furthermore, the repository has been deposited at Zenodo under BLOOP. We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide package versions as the supplementary file "R_session_info.txt"
 
 ## Quantification of gene counts
 
-Kallisto (0.46.2) was the pseudoaligner [@brayNearoptimalProbabilisticRNAseq2016]. The reference transcriptomes used to build the kallisto index were the Gencode "gencode.vM25.annotation.gtf.gz" and "gencode.v35.annotation.gtf.gz" for mouse and human, respectively [@harrowGENCODEReferenceHuman2012; @jGENCODEReferenceHuman2012]. The Ensembl release 101 "Macaca_mulatta.Mmul_101.gtf.gz" was used for the macaque transcriptome [@yatesEnsembl20202020]. For the relatively few single ended samples, the params "--single -l 200 -s 30" were used for kallisto quant. Otherwise the "--bias" flag was added. For the droplet-based samples, bustools (0.39.4) was used to extract the single cell barcodes, sort the output, and fix barcoding errors [@melstedBarcodeUMISet2019].  
+Gene quantification is handled by the SnakQUANT snakefile. Kallisto (0.46.2) was the pseudoaligner [@brayNearoptimalProbabilisticRNAseq2016]. The reference transcriptomes used to build the kallisto index were the Gencode "gencode.vM25.annotation.gtf.gz" and "gencode.v35.annotation.gtf.gz" for mouse and human, respectively [@harrowGENCODEReferenceHuman2012; @jGENCODEReferenceHuman2012]. The Ensembl release 101 "Macaca_mulatta.Mmul_101.gtf.gz" was used for the macaque transcriptome [@yatesEnsembl20202020]. For the relatively few single ended samples, the params "--single -l 200 -s 30" were used for kallisto quant. Otherwise the "--bias" flag was added. For the droplet-based samples, bustools (0.39.4) was used to extract the single cell barcodes, sort the output, and fix barcoding errors [@melstedBarcodeUMISet2019].  
 
 ## Intersection of gene names between mouse, macaque, and human
 
-VINAY DISCUSS
+To facilitate comparison of gene expression across species, where possible we converted mouse and macaque gene ids and names to human ones. We downloaded a mapping of orthologous genes between human, mouse, and macaque using the Ensembl BioMart web browser in November 2020. We identified 15XXX human genes that could be directly mapped to mouse and macaque orthologs. Genes present in mouse or macaque that were not found in human were not used for scVI batch correction, but were retaomed and used for differential gene expression. 
 
-## Custom macaque reference quant
+## Custom macaque reference quantification
 
-As we noticed that several retina marker genes (WHICH ONES!!!!) had unusually low expression in the macaque data we quantified the scRNA data twice: once with the Ensembl reference and again with the same Gencode human reference used for the human data. We compared the gene-level counts for each cell and replaced the macaque gene count with the human counts if the human counts were higher. VINAY AM I MISSING DETAILS?
+As we noticed that several retina marker genes (e.g. NRL and CRX) had very low expression in the macaque data we quantified the scRNA data twice: once with the Ensembl reference and again with the same Gencode human reference used for the human data. We compared the gene-level counts for each cell and replaced the macaque gene count with the human counts if the human counts were greater than the macaque counts and, to prevent genes with very few total counts from being used, we required the counts greater than the first quartile of non-zero macaque gene expression.
 
 ## Remove empty droplets and further QC.
 
@@ -362,7 +364,7 @@ While we removed droplet-based cells with more than 3,000 transcripts as these a
 
 ## xgboost based cell type model
 
-VINAY WRITE
+In order to identify cell types for the `r meta_filter %>% filter(is.na(CellType), is.na(TabulaMurisCellType))` unlabelledcells we designed a custom xgboost based cell type classifier. We took labeled data and split it into training and test sets, stratified by cell type. The input features used to train the model are the scVI latent dimensions, the total number of reads in each cell, the number genes detected in each cell, and the percent mitochondrial gene expression of each cell. We additionally generated features using the age of each sample by group sample into three developmental categories (Early Development, Late Development, and Adult) and then generated a one-hot encoded feature for each category. In order to speed up training times, we used the gpu implementation of the xgboost algorithm from the the xgboost python library. The model was trained using default parameters. The trained model had an overall F1 score of XXX an average precision and recall of XXX and XXX for each major retinal cell type. This model was then used to identify labels for each unlabelled cell. Unlabelled data was preprocessed identically to training data and fed into model to generate a vector of label probabilities for each cell. We selected the highest label probability for each cell, and required a minimum probability of .5 to assign a label to a cell. 
 
 <!-- ## pseudobulk differential expression testing -->
 
