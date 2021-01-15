@@ -24,9 +24,9 @@ output:
     pandoc_args:
       - '--lua-filter=scholarly-metadata.lua'
       - '--lua-filter=author-info-blocks.lua'
-bibliography: references2.bib
+bibliography: references.bib
 csl: investigative-ophthalmology-and-visual-science.csl
-abstract: "The development of highly scalable single cell transcriptome technology has allowed for a high resolution view into huge numbers of single cell transcriptomes. Analyzing the transcriptomes between different projects is highly desirable as this would theoretically allow for better assessment of which effects are consistent across independent studies. However it is difficult to compare and contrast data across different projects as there are substantial batch effects from computational processing, single cell technology utilized, and the natural biological variation. While many single cell transcriptome specific batch correction methods purport to remove the technical noise it is difficult to ascertain which method works best. We developed an R package (scPOP) that can scan the results of multiple methods and key parameter choices and create a ranked list of the best performing method / parameter combinations. We use this package along with a Snakefile based workflow system to demonstrate how to optimally merge over 1.4 million cells from 30 datsets and three species to create a massive ocular single cell transcriptome meta-atlas. This provides a model how to efficiently create meta-atlases for tissues and cells of interest."
+abstract: "The development of highly scalable single cell transcriptome technology has allowed for a high resolution view into huge numbers of single cell transcriptomes. Analyzing the transcriptomes between different projects is highly desirable as this would theoretically allow for better assessment of which effects are consistent across independent studies. However it is difficult to compare and contrast data across different projects as there are substantial batch effects from computational processing, single cell technology utilized, and the natural biological variation. While many single cell transcriptome specific batch correction methods purport to remove the technical noise it is difficult to ascertain which method works best. We developed an R package (scPOP) that can scan the results of multiple methods and key parameter choices and create a ranked list of the best performing method / parameter combinations. We use this package along with a Snakefile based workflow system to demonstrate how to optimally merge over one million cells from 30 datsets and three species to create a massive ocular single cell transcriptome meta-atlas. This provides a model how to efficiently create meta-atlases for tissues and cells of interest."
 keywords: "RNA-seq, retina, RPE, ocular, eye, Snakemake, singlecell, scRNA, single-cell, singlecell, scPOP, R"
 ---
 
@@ -56,7 +56,7 @@ supFig_cap <- captioner("Supplemental Figure")
 tab_cap <- captioner("Table")
 supTab_cap <- captioner("Supplemental Table")
 
-scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/massive_integrated_eye_scRNA/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-500-0.6.sqlite", idleTimeout = 3600000)
+scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.2-500-0.6.sqlite", idleTimeout = 3600000)
 
 meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
 meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
@@ -64,33 +64,32 @@ meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_pred
                                                                    CellType_predict == 'RPC' ~ 'RPCs',
                                                                    CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
                                                                    TRUE ~ CellType_predict),
-                                      UMAP_1 = UMAP_1 * -1,
+                                      UMAP_1 = UMAP_1 * 1,
                                       UMAP_2 = UMAP_2 * -1) %>%
   mutate(CellType_predict = case_when(!is.na(TabulaMurisCellType_predict) ~ 'Tabula Muris',
                                       TRUE ~ CellType_predict))
-# cell num  before QC removal (mito / likely doublets)
-#qc <- read_tsv('~/data/massive_integrated_eye_scRNA/mito_counts.tsv')
+
 
 # meta data before doublet removal
-load('~/data/massive_integrated_eye_scRNA/n_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.1__neighbors-500.umap.Rdata')
+load('~/data/scEiaD/n_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.2__neighbors-500.umap.Rdata')
 umapRef <- umap
 
-methods <- factor(c('scArches', 'bbknn','insct','magic', 'scVI','CCA', 'scanorama', 'harmony', 'fastMNN', 'combat', 'none', 'liger'), levels = c('bbknn','CCA','combat','fastMNN','harmony','insct','liger','magic','scanorama','scArches','scVI', 'none')) 
+methods <- factor(c('scArches', 'bbknn','insct','magic', 'scVI','CCA', 'scanorama', 'harmony', 'fastMNN', 'combat', 'none'), levels = c('bbknn','CCA','combat','fastMNN','harmony','insct','magic','scanorama','scArches','scVI', 'none')) 
 
-gse <- read_tsv('~/git/massive_integrated_eye_scRNA/data/GEO_Study_Level_Metadata.tsv')
+gse <- read_tsv('~/git/scEiaD/data/GEO_Study_Level_Metadata.tsv')
 
-qc <- readr::read_tsv('~/data/massive_integrated_eye_scRNA/QC.tsv.gz')
+qc <- readr::read_tsv('~/data/scEiaD/QC.tsv.gz')
 
 # cell type prediction
-load('~/data/massive_integrated_eye_scRNA/PREDICTIONSn_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.1__neighbors-500.Rdata')
-test_predictions <- data.table::fread('~/data/massive_integrated_eye_scRNA/277874_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
+load('~/data/scEiaD/PREDICTIONSn_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.2__neighbors-500.Rdata')
+test_predictions <- data.table::fread('~/data/scEiaD/981791_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
   mutate(max_pred_prob = rowMaxs(.[,-(33:36)] %>% as.matrix ), 
          pred_correct = ifelse(cell_type_id == true_cell_id, 'Correct', 'incorrect'))
 # created by running 'source' on src/make_dotplot_markers.R
-load('~/data/massive_integrated_eye_scRNA/top_markers.Rdata')
+load('~/data/scEiaD/top_markers.Rdata')
 
 # pmid search
-load('~/data/massive_integrated_eye_scRNA/top_marker_pmid.Rdata')
+load('~/data/scEiaD/top_marker_pmid.Rdata')
 ```
 
 
@@ -213,7 +212,7 @@ input <- list()
 input[['dotplot_Gene']] <- top_markers %>%  
   filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE|Micro', cluster), D_KL > 0.2) %>%  
   group_by(cluster)  %>% 
-  slice_max(med_auc, n =5) %>% 
+  slice_max(mean_auc, n =5) %>% 
   pull(Gene)
 input[['dotplot_groups']] <- c('CellType_predict')
 input[['dotplot_filter_cat']] <- 'CellType_predict'
@@ -274,7 +273,7 @@ org <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 )
 
 plot_grid(dplot + theme(legend.title = element_text(angle = 90),
-                        axis.text = element_text(size = 8)),
+                        axis.text = element_text(size = 6)),
           plot_grid(ctp$plot + theme(legend.position = "none"), 
                     ctp2$plot + theme(legend.position = "none") + facet_wrap(~CellType_predict),
                     grid.grabExpr(draw(ct_confusion)),
@@ -292,15 +291,14 @@ plot_grid(dplot + theme(legend.title = element_text(angle = 90),
 
 After ML projection of cell type labels from the original `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` labels onto a total of `r meta_filter %>% filter(!is.na(CellType_predict) | !is.na(TabulaMurisCellType_predict)) %>% nrow()` cells we have substantially improved the number of studies per cell type. For example, we went from `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(2)` human studies with labelled Muller Glia to `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(5)` after labelling (`r supTab_cap(name = 'supTab_SAcounts', display = 'cite')`). Overall we go from an average of `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(2) %>% mean()` studies per human cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(5) %>% mean()` and `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(4) %>% mean()` studies per mouse cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(7) %>% mean()` after transferring the cell type labels. 
 
-<!-- # REWRITE? (UNFORTUNATELY) FOR NEW DATA WHEN(?) IT COMES IN -->
-As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a), 37 had one or more citations in the gene/celltype search (table X) and 47 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(med_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
+As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a), 40 had one or more citations in the gene/celltype search (table X) and 51 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(mean_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
 
-The four genes with zero hits were IGSF21 (Bipolar Cells), BTBD8 (Bipolar Cells), FRZB (Muller Glia), and TAGLN3 (Retinal Ganglion Cells). In a more exhaustive hand literature search we find that IGSF21 is associated with Diabetic Retinopathy in a Han Chinese population (https://pubmed.ncbi.nlm.nih.gov/27607899/). BTBD8 contains BTB/POZ domains associated with transcription factor protein-protein interactions (https://www.spandidos-publications.com/10.3892/ijmm.13.1.193). FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2330018/). TAGLN3 has been previously reported in chick to be expressed in developing Retinal Ganglion Cells (https://onlinelibrary.wiley.com/doi/abs/10.1002/cne.24241). 
-<!-- # REWRITE? (UNFORTUNATELY) FOR NEW DATA WHEN(?) IT COMES IN -->
+The four genes with zero hits were SCRG1 (Astrocytes), BTBD8 (Bipolar Cells), GATM (Microglia), and FRZB (Muller Glia). In a more exhaustive literature search we find that SCRG1 is a secreted protein which marks brain neurons, regulates human mesenchymal stem cells differentiation, and is overexpressed in brain astrocyte precursors [@aomatsuNovelSCRG1BST12014; @chaboubTemporalProfilingAstrocyte2016]. BTBD8 contains BTB/POZ domains known to generally be associated with with transcription factor mediated protein-protein interactions [@xuMolecularCloningCharacterization2004; @zollmanBTBDomainFound1994]. GATM is mitochondriale nzyme involved in creatine biosynthesis and was previously shown to upregulated in a brain microglia population [@hammondSingleCellRNASequencing2019]. FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia [@zhuCharacterizationCanonicalWnt2018]. Overall, we find very high concordance with known retina cell type markers.
+
 
 ## The scVI-based scEiaD UMAP projection blends batches while separating cell types
 
-The 2D UMAP projection of the scVI-calculated batch corrected 10 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We also see good mixing across all the droplet and well based single cell technologies (`r supFig_cap(name = 'supFig_platformInt', display = 'cite')`). We see the neurogenic and progenitor populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptor precursors are adjacent to the neurogenic population and flow into the rods and cones. The amacrine and horizontal precursors (AC/HC) likewise flow from the neurogenic center into the mature amacrine and horizontal cells. 
+The 2D UMAP projection of the scVI-calculated batch corrected 8 latent dimensional space blends the `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` studies together while also maintaining distinct space for the `r meta_filter$CellType_predict %>% table() %>% length()` unique cell types. We also see good mixing across all the droplet and well based single cell technologies (`r supFig_cap(name = 'supFig_platformInt', display = 'cite')`). We see the neurogenic and progenitor populations from which the retinal cell types are derived near the center of the UMAP visualization. The photoreceptor precursors are adjacent to the neurogenic population and flow into the rods and cones. The amacrine and horizontal precursors (AC/HC) likewise flow from the neurogenic center into the mature amacrine and horizontal cells. 
 
 The photoreceptors (cones and rods) of the retina which are responsible for color and low-light vision, respectively, are near each other in the UMAP space. The major remaining retina cell types, by proportion in the mammalian eye are the Muller Glia, which are a glial cell type which help support the neurons of the retina. Next we have the neural cell types which transmit and help interpret the signals from the photoreceptors before they leave the retina via the optic stalk: the amacrine cells, retinal ganglia, horizontal, and bipolar cells. All of these cells are in well defined spaces in the UMAP. Finally we see even across species that the major cell types still group near each other (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`d). The macaque retina cells are not present in the precursor/neurogenic center of the UMAP as expected because only fully developed tissues were sampled in these data.  
 
@@ -308,11 +306,11 @@ The photoreceptors (cones and rods) of the retina which are responsible for colo
 
 <!-- Differential gene expression testing between clusters or cell types in the single cell field usually involve using running the statistical test of choice with all individual cells across the group. In bulk RNA-seq the tests are done in relation to replicates, which are generally required. As we have a large number of replicates, we can sum our gene expression counts by group (e.g. celltype or cluster, split by organism and study). After this summing, we now have created a "pseudo-bulk" matrix. The statistical properties (CITE SOMETHING) are now similar to the traditional bulk RNA-seq experiment, allowing us to leverage the robust tooling. We use the edgeR test to run our differential expression tests.  -->
 
-## Pseudotime recapitulates and improves resolution of developmental processes
-
 ## Projection of new data onto scEiaD 
 
-The hard work of creating this resource can be leveraged by the wider community with a few relatively simple steps. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our scVI model, and 3. following the R notebook we provide as supplemental file BLOOP and at http://www.ZENODOSOMETHING. We demonstrate by adding new retina data to scEiaD that was published after our last data pull.....
+The hard work of creating this resource can be leveraged and extended by the wider community with relatively few simple steps and modest compute requirements. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our ~13 megabyte scVI model, and 3. following the Jupyter notebook on Google colab that we provide as supplemental file BLOOP and at http://colab.goo. We demonstrate by adding self-generated iPSC-based RPE along with previously published retina organoid and cell line data to scEiaD. 
+
+Projection of new data onto scEiaD potentially allows for semi-direct comparison of other species, *in vitro* systems, and pharamacologic / mutational perturbation of mammalian retina cells. 
 
 <!-- ## Pan mouse as non-ocular reference to improve retina-specific gene search -->
 
@@ -372,18 +370,17 @@ VINAY WRITE
 
 ## Marker gene identification
 
-scran findmarkers (wilcox test) along with singleCellHaystack. Filtering to keep genes that FDR < 1 or
+scran findmarkers (wilcox test) along with singleCellHaystack. Filtering to keep genes that mean AUC > 0.2 or with a D KL > 0.2. 
 
-## Trajectory
+<!-- ## Trajectory -->
 
-To calculate continuous trajectories for individual terminally differentiated retina cell types, we used the Slingshot R package [@streetSlingshotCellLineage2018]. Slingshot first uses the clusters to build a minimum spanning tree to identify the global lineage structure. We specified the starting cluster by identifying the cluster for human and mouse with a high proportion of the early RPC cells and specified the terminal clusters that were predominantly a terminal retina cell type (Amacrine, Bipolar, Cones, Horizontal, Muller Glia, Retinal Ganglion, Rods). XXXX trajectories were built and we hand-pruned out redundant or non-sensical (e.g. Photoreceptor precursors to Cone to Rod Bipolar) trajectories, leaving XXXX trajectories for downstream analysis. 
-To identify major points of gene expression changes during differentiation we built linear models across XXXXXXX bins. 
+<!-- To calculate continuous trajectories for individual terminally differentiated retina cell types, we used the Slingshot R package [@streetSlingshotCellLineage2018] on the human subset. Slingshot first uses the clusters to build a minimum spanning tree to identify the global lineage structure. We specified the starting cluster by identifying the cluster for human and mouse with a high proportion of the early RPC cells and specified the end clusters that were predominantly a terminal retina cell type (Amacrine, (Rod) Bipolar, Cones, Horizontal, Muller Glia, Retinal Ganglion, Rods). As some clusters were combinations of different (but similar) cell types, we "subclustered" the clusters by splitting them into smaller groups if they contained two or more cell types with > 20% ratio of a cell type. XXXX trajectories were built and we hand-pruned out redundant or non-sensical (e.g. Photoreceptor precursors to Cone to Rod Bipolar) trajectories, leaving XXXX trajectories for downstream analysis.  -->
 
+<!-- To identify major points of gene expression changes during differentiation we built linear models across XXXXXXX bins.  -->
 
+<!-- ## velocity -->
 
-## velocity
-
-VINAY
+<!-- To id -->
 
 ## Projection of new data onto scEiaD
 
