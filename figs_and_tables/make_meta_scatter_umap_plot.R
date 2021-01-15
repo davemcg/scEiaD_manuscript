@@ -17,9 +17,10 @@ tabulamuris_predict_labels <-scEiaD_2020_v01 %>% tbl('tabulamuris_predict_labels
 celltype_predict_labels <-scEiaD_2020_v01 %>% tbl('celltype_predict_labels') %>% 
   mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
                                       CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
-                                      TRUE ~ CellType_predict)) %>% collect
-celltype_labels <-scEiaD_2020_v01 %>% tbl('celltype_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * -1, UMAP_2 = UMAP_2 * -1) 
-cluster_labels <-scEiaD_2020_v01 %>% tbl('cluster_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * -1, UMAP_2 = UMAP_2 * -1) 
+                                      TRUE ~ CellType_predict)) %>% collect() %>% 
+  mutate(UMAP_1 = UMAP_1 * 1, UMAP_2 = UMAP_2 * -1) 
+celltype_labels <-scEiaD_2020_v01 %>% tbl('celltype_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * 1, UMAP_2 = UMAP_2 * -1) 
+cluster_labels <-scEiaD_2020_v01 %>% tbl('cluster_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * 1, UMAP_2 = UMAP_2 * -1) 
 mf <- meta_filter 
 
 # generate color_mappings

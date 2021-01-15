@@ -21,16 +21,21 @@ a <- meta_filter %>%
 dagified <- dagify('counts' ~ 'fastq',
                    'SnakePOP' ~ 'CellType',
                    'SnakePOP' ~ 'counts',
-                   'LatentDims' ~ 'SnakePOP',
+                   'LatentDims' ~ 'scVIrefquery',
                    'cluster' ~ 'LatentDims',
                    'umap' ~ 'LatentDims' ,
                    'ML' ~ 'CellType',
                    'projectedCellType' ~ 'ML',
                    'ML' ~ 'LatentDims',
+                   'scVIrefquery' ~ 'SnakePOP',
                    'DiffTesting' ~ 'counts',
                    'DiffTesting' ~ 'projectedCellType',
                    'DiffTesting' ~ 'CellType',
                    'DiffTesting' ~ 'cluster',
+                   'SnakePOP' ~ 'BatchInfo',
+                   'scVIrefquery' ~ 'BatchInfo',
+                   'Trajectory' ~ 'cluster',
+                   'Velocity' ~ 'LatentDims',
                    'projectedCellType' ~ 'LatentDims',
                    'Trajectory' ~ 'projectedCellType',
                    'Trajectory' ~ 'LatentDims',
@@ -38,14 +43,25 @@ dagified <- dagify('counts' ~ 'fastq',
 
 tidy_dagitty(dagified)
 set.seed(2534)
-b <- as_tbl_graph(dagified) %>% mutate(bop = name) %>% ggraph(layout = 'graphopt') + 
+b <- tidy_dagitty(dagified) %>% as_tbl_graph() %>% 
+  mutate(type = case_when(name %in% c('fastq', 'CellType', 'BatchInfo') ~ 'Input',
+                          name %in% c('DiffTesting', 'Velocity', 'Trajectory','umap', 'projectedCellTypes','cluster') ~ 'Outputs'),
+         name = case_when(name == 'CellType' ~ 'Published\nCell Types',
+                          name == 'projectedCellType' ~ 'Learned\nCell Types',
+                          name == 'DiffTesting' ~ 'Diff\nTesting',
+                          name == 'scVIrefquery' ~ 'scVI Ref +\nQuery',
+                          name == 'LatentDims' ~ 'Latent Dims',
+                          name == 'BatchInfo' ~ 'Batch Info',
+                          TRUE ~ name)) %>% 
+  ggraph(layout = 'kk') + 
   geom_edge_link(arrow = arrow(length = unit(3, 'mm')), 
-                 end_cap = circle(8, 'mm'), start_cap = circle(2, 'mm')) + 
+                 end_cap = circle(9, 'mm'), start_cap = circle(2, 'mm')) + 
   #geom_node_point(size = 10) +
-  geom_node_label(aes(label = name), color = 'black', alpha = 1)  + 
-    theme_nothing()
+  geom_node_label(aes(label = name, color = type), alpha = 1)  + 
+  scale_color_manual(values = c('Red','Blue'), na.value = 'Black') +
+  theme_nothing()
 
-  
+
 
 # CellType
 ct_order <- qc %>% mutate(CellType = case_when(is.na(CellType) ~ 'Unlabelled', grepl('RPC', CellType) ~ 'RPCs', TRUE ~ CellType)) %>% group_by(CellType) %>% dplyr::count() %>% arrange(-n) %>% filter(n > 10000 | CellType %in% c('Astrocytes','RPE', 'Horizontal Cells'), CellType != 'Unlabelled') %>% pull(CellType)

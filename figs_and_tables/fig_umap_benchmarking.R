@@ -1,9 +1,9 @@
 library(scattermore)
-source('figs_and_tables/fig2__integrationPerf.R')
-load('~/data/massive_integrated_eye_scRNA/Mus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features2000__libSize__TabulaDroplet__batch__none__dims30__preFilter__mindist0.3__nneighbors30.umap.Rdata')
+source('~/git/scEiaD_manuscript/figs_and_tables/fig2__integrationPerf.R')
+load('~/data/scEiaD/n_features-2000__transform-standard__partition-TabulaDroplet__covariate-batch__method-none__dims-30__dist-0.3__neighbors-15__knn-7__umap.Rdata')
 umapNone <- umap
 
-load('~/data/massive_integrated_eye_scRNA/Mus_musculus_Macaca_fascicularis_Homo_sapiens__n_spec_genes-0__n_features2000__libSize__TabulaDroplet__batch__combat__dims30__preFilter__mindist0.3__nneighbors30.umap.Rdata')
+load('~/data/scEiaD/n_features-2000__transform-standard__partition-TabulaDroplet__covariate-batch__method-combat__dims-30__dist-0.3__neighbors-15__knn-7__umap.Rdata')
 umapCombat <- umap
 
 umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsize = 2){

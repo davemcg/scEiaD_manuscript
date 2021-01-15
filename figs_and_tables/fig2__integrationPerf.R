@@ -1,7 +1,7 @@
-load('~/data/massive_integrated_eye_scRNA/metrics_2020_11_28.Rdata')
+load('~/data/scEiaD//metrics_2020_11_28.Rdata')
 perfO <- perf
 
-load('~/data/massive_integrated_eye_scRNA/merged_stats_2020_12_28.Rdata')
+load('~/data/scEiaD//merged_stats_2021_01_01.Rdata')
 
 perf <- perf %>% 
   mutate(knn = case_when(method == 'scArches' ~ 7, TRUE ~ knn))
