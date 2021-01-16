@@ -293,8 +293,7 @@ After ML projection of cell type labels from the original `r meta_filter %>% fil
 
 As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r supFig_cap(name = 'figXGboost_umap', display = 'cite')`a), 40 had one or more citations in the gene/celltype search (table X) and 51 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(mean_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
 
-The four genes with zero hits were SCRG1 (Astrocytes), BTBD8 (Bipolar Cells), GATM (Microglia), and FRZB (Muller Glia). In a more exhaustive literature search we find that SCRG1 is a secreted protein which marks brain neurons, regulates human mesenchymal stem cells differentiation, and is overexpressed in brain astrocyte precursors [@aomatsuNovelSCRG1BST12014; @chaboubTemporalProfilingAstrocyte2016]. BTBD8 contains BTB/POZ domains known to generally be associated with with transcription factor mediated protein-protein interactions [@xuMolecularCloningCharacterization2004; @zollmanBTBDomainFound1994]. GATM is mitochondriale nzyme involved in creatine biosynthesis and was previously shown to upregulated in a brain microglia population [@hammondSingleCellRNASequencing2019]. FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia [@zhuCharacterizationCanonicalWnt2018]. Overall, we find very high concordance with known retina cell type markers.
-
+The four genes with zero hits were SCRG1 (Astrocytes), BTBD8 (Bipolar Cells), GATM (Microglia), and FRZB (Muller Glia). In a more exhaustive literature search we find that SCRG1 is a secreted protein which marks brain neurons, regulates human mesenchymal stem cells differentiation, and is overexpressed in brain astrocyte precursors [@aomatsuNovelSCRG1BST12014; @chaboubTemporalProfilingAstrocyte2016]. BTBD8 contains BTB/POZ domains known to generally be associated with with transcription factor mediated protein-protein interactions [@xuMolecularCloningCharacterization2004; @zollmanBTBDomainFound1994]. GATM is mitochondrial enzyme involved in creatine biosynthesis and was previously shown to up-regulated in a brain microglia population [@hammondSingleCellRNASequencing2019]. FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia [@zhuCharacterizationCanonicalWnt2018]. Overall, we find very high concordance with known retina cell type markers.
 
 ## The scVI-based scEiaD UMAP projection blends batches while separating cell types
 
@@ -306,17 +305,14 @@ The photoreceptors (cones and rods) of the retina which are responsible for colo
 
 <!-- Differential gene expression testing between clusters or cell types in the single cell field usually involve using running the statistical test of choice with all individual cells across the group. In bulk RNA-seq the tests are done in relation to replicates, which are generally required. As we have a large number of replicates, we can sum our gene expression counts by group (e.g. celltype or cluster, split by organism and study). After this summing, we now have created a "pseudo-bulk" matrix. The statistical properties (CITE SOMETHING) are now similar to the traditional bulk RNA-seq experiment, allowing us to leverage the robust tooling. We use the edgeR test to run our differential expression tests.  -->
 
-## Projection of new data onto scEiaD shows that outside datasets for both tissue and iPSC-based samples overlap the scEiaD/scVI model
 
-The hard work of creating this resource can be leveraged and extended by the wider community with relatively few simple steps and modest compute requirements. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our ~13 megabyte scVI model, and 3. following the Jupyter notebook on Google colab that we provide as supplemental file BLOOP and at http://colab.goo. We demonstrate by adding self-generated iPSC-based RPE along with previously published retina organoid and cell line data to scEiaD. 
+## Projection of new data onto scEiaD demonstrates how iPSC-based cells are similar to tissue-based cells
 
-Projection of new data onto scEiaD allows for semi-direct comparison of other species, *in vitro* systems, and pharamacologic / mutational perturbation of mammalian retina cells. In the previous example we demonstrated how a outside mouse pan-retina dataset maps onto 
+The hard work of creating this resource can be leveraged and extended by the wider community with a few relatively simple steps and modest compute requirements. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.1, 2. downloading our 13 megabyte scVI model, and 3. following the Jupyter notebook on Google colab that we provide as supplemental file BLOOP and as a live demo at http://colab.google. We demonstrate the power of this approach in two ways.
 
-We demonstrate with a iPSC-based RPE cell line that we ran with the 10x v2 system that non-primary cells can be projected onto the scEiaD. The differentiated iPSC-based RPE from this highly optimized differentiation protocol (CITE BHARTI) overlap post-mortem adult human RPE cells from the Cowan et al. work. (MAKE FIGURE)
+First, we project another retina dataset onto scEiaD from Fadl et al . As this is a pan-retina tissue sample, we would expect most of the major cell types of the retina to be present. In the Google colab notebook we show how a set of the reads from SRR12130660 can be processed from the raw reads to a UMAP visualization overlapping our scEiaD in under 15 minutes. Indeed, as expected we see many amacrine, rods, muller glia, bipolar, a few cones and retinal ganglion, and a small number of non-retina cells (`r supFig_cap(name = 'projection_fig', display = 'cite')`b). 
 
-<!-- ## Pan mouse as non-ocular reference to improve retina-specific gene search -->
-
-<!-- Do some sloppy/easy thing where we identify retina specific genes by searching across the TM data? -->
+Second, we demonstrate how the RPE derived from the Bharti iPSC differentiation method closely match tissue RPE from other studies (the largest being the Cowan et al data; `r supFig_cap(name = 'projection_fig', display = 'cite')`a). Cells generated with this process have been extensively validated with functional RPE tests. Our scRNA approach provides another layer of evidence that the Bharti iPSC-RPE differentation protocol generates RPE cells that are functionally equivalent to human adult RPE in an unbiased manner. 
 
 # Methods
 
@@ -372,7 +368,7 @@ In order to identify cell types for the `r meta_filter %>% filter(is.na(CellType
 
 ## Marker gene identification
 
-scran findmarkers (wilcox test) along with singleCellHaystack. Filtering to keep genes that mean AUC > 0.2 or with a D KL > 0.2. 
+To identify marker genes across the CellType (predict) and cluster groups, we used the scran findmarkers (wilcox test) along with the singleCellHaystack algorithm. The scran findmarkers test runs a wilcox test in a pairwise manner (e.g. Rods vs all other cell types). It returns an overall p-value (and FDR) that assesses how well the gene is at separating the group of interest from all other cells. It also returns for each pair-wise comparison an area under the curve (AUC) score, where 1 is a perfect power to distinguish and 0 is no power. The singleCellHaystack uses a Kullback-Leibler divergence measurement of the scVI lower dimensional space to identify genes with non-random distribution. A higher "D KL" score represents a gene with "specific" expression in teh UMAP/lower dimensional space. We filtered to keep genes with FDR < 0.01 and a mean AUC > 0.2 or  a D KL > 0.2. 
 
 <!-- ## Trajectory -->
 
@@ -384,21 +380,27 @@ scran findmarkers (wilcox test) along with singleCellHaystack. Filtering to keep
 
 <!-- To id -->
 
-## Projection of new data onto scEiaD
-
-
-
 # Conclusion
 
-## Self built meta-atlases are easy as 1,2, benchmark a bunch, 3
+# Limitations   
+
+The scVI model is first built the on human data. The mouse and macaque data are then projected (or queried) onto it with the scVI/scArches approach. While this system works very well to integrate information between these three species, this approach may not scale to more distantly related species. Another limitations is that discrepancies between cell type labels between different labs makes certain transitioning cell type labels a bit imprecise. One example is how the rods and photoreceptor precursor labels overlap somewhat. Though we attempted to ameliorate the issue by removing cell type labels in large disagreement with the consensus our cell type labels are effectively "crowd-sourced" and some disagreements can propagate into our labeled cells. 
+
+## The scEiaD is a unique ocular resource that provides a highly diverse, large N dataset with a relatively small amount of compute power
+
+We have assembled the largest ocular single cell transcriptome database to date. The rapid of advancement of algorithms to batch correct and process data continue to reduce the computational requirements to handle huge numbers of cells. The scVI batch correction step on around one million cells runs within a few hours on a GPU and 150GB of memory. This places this crucial step within the capabilities of a moderately large physical server or a cloud compute node. Further downstream proessing can largely be done a computers with 64+ Gb of memory and a few hundred GB of disk space. We believe that our efforts can be replicated in any other tissue / system with a large number of independent studies by an individual lab or small number of scientists. We provide the completed analysis as both Scanpy (h5ad) and Seurat objects at https://github.com/davemcg/scEiaD. 
+
+## Benchmarking and quantitation of integration performance is crucial for meta-atlas studies
+
+We originally intended to just use the Seurat CCA method to integrate the datasets. However, the long run-times of CCA and poor integration of our known cell types led us to benchmark more methods and parameters. We also originally attempted to "hand-assess" the integration results by using the UMAP 2D projection view. This proved to scale poorly and this led use to curate some of the most useful benchmarking algorithms (NMI, ARI, silhouette, and LISI) that roughly matched our "hand-assessed" results into the scPOP R package. While we chose the scVI algorithm, we do not believe that it will work best for all datasets. We strongly suggest any other groups attempting a similar meta-atlas construction chose a quantifiable set of criteria so optimal methods and parameters can be picked. 
 
 ## Transfer of cell type labels from a smaller number of studies onto the remainining cells is a powerful way to increase diversity in a meta-atlas
 
-## The scEiaD dataset provides a highly diverse, large N resource for methods development 
-
-## The scEiaD is a unique ocular community resource  
+We hand curate over 300,000 cell type labels. With a standard xgboost algorithm using the latent dimensions, cell age classification (developing or matured), and the UMAP coordinates, we can very accurately label the remaining cells. Many other cell type labelling algorithms and systems exist for those groups less willing or able to tune a machine learning algorithm. For example, the developers of scVI also have a cell type label projection algorithm called scANVI. Whichever approach you use, taking a smaller number of high quality labels and projecting them onto the remaining cells is a powerful way to leverage community knowledge across a huge diverse dataset. 
 
 ## Projection allows community knowledge to be leveraged by all
+
+Many retina "atlases" have been published to date. We argue that we have created the first atlas that is generally useful because 1. our dataset/atlas is several times larger than any other published set, 2. our data is available via download in several forms at https://github.com/davemcg/scEiaD, and crucially 3. we provide a Google colab/Jupyter notebook which exactly lays out how to use scVI's to project (or query) outside data onto our scEiaD with minimum compute resources. Finally we also provide our xgboost model so outside groups can label their own datasets with our robust retina cell type labelling system. 
 
 # Supplemental
 ```{r supFig1, fig.width=4, fig.height=6, out.width=300, fig.cap=supFig1_cap, echo=FALSE, message = FALSE}
