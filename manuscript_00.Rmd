@@ -308,15 +308,11 @@ The photoreceptors (cones and rods) of the retina which are responsible for colo
 
 ## Projection of new data onto scEiaD 
 
-The hard work of creating this resource can be leveraged and extended by the wider community with relatively few simple steps and modest compute requirements. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our ~13 megabyte scVI model, and 3. following the Jupyter notebook on Google colab that we provide as supplemental file BLOOP and at http://colab.goo. We demonstrate by adding self-generated iPSC-based RPE along with previously published retina organoid and cell line data to scEiaD. 
+The hard work of creating this resource can be leveraged and extended by the wider community with a few relatively simple steps and modest compute requirements. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.0, 2. downloading our ~13 megabyte scVI model, and 3. following the Jupyter notebook on Google colab that we provide as supplemental file BLOOP and at http://colab.google. We demonstrate the power of this approach in two ways.
 
-Projection of new data onto scEiaD potentially allows for semi-direct comparison of other species, *in vitro* systems, and pharamacologic / mutational perturbation of mammalian retina cells. 
+First, we project another retina dataset onto scEiaD from Fadl et al.. As this is a pan-retina tissue sample, we would expect most of the major cell types of the retina to be present. In the Google colab notebook we provide a short set of the reads from SRR12130660 can be processed from the raw reads to a UMAP overlapping scEiaD in under 15 minutes. Indeed, as expected we see many amacrine, rods, muller glia, bipolar, a few cones and retinal ganglion, and a small number of non-retina cells (`r supFig_cap(name = 'projection_fig', display = 'cite')`b). 
 
-We demonstrate with a provided iPSC-based RPE cell line that we sequenced that non-tissue can be projected onto the scEiaD
-
-<!-- ## Pan mouse as non-ocular reference to improve retina-specific gene search -->
-
-<!-- Do some sloppy/easy thing where we identify retina specific genes by searching across the TM data? -->
+Second, we demonstrate how the RPE derived from the Bharti iPSC differentiation method closely match tissue RPE from other studies (the largest being the Cowan et al data; `r supFig_cap(name = 'projection_fig', display = 'cite')`a) This provides another layer of evidence that the Bharti iPSC-RPE differentation protocol generates RPE cells that are functionally equivalent to human adult RPE. 
 
 # Methods
 
