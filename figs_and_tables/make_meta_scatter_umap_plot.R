@@ -1,4 +1,3 @@
-
 library(ggplot2)
 library(Cairo)
 library(scattermore)
@@ -79,17 +78,15 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
     meta_filter[,meta_column] <- log2(meta_filter[,meta_column] + 1)
   }
   p_data <- meta_filter %>%
-    filter(!grepl('Doub|\\/Margin\\/Periocular', CellType)) %>%
-    filter(!is.na(!!as.symbol(meta_column)))
+    #filter(!grepl('Doub|\\/Margin\\/Periocular', CellType)) %>%
+    filter_at(vars(all_of(input$meta_filter_cat)), all_vars(. %in% input$meta_filter_on))
   
   # metadata NUMERIC plot --------------
   if (is.numeric(meta_filter[,meta_column] %>% pull(1)) ){
     color_range <- range(p_data[,meta_column] %>% pull(1))
     suppressWarnings(plot <- ggplot() +
-                       geom_scattermost(cbind(mf %>%
-                                                filter(is.na(!!as.symbol(meta_column))) %>% pull(UMAP_1),
-                                              mf %>%
-                                                filter(is.na(!!as.symbol(meta_column))) %>% pull(UMAP_2)),
+                       geom_scattermost(cbind(mf %>% pull(UMAP_1),
+                                              mf %>% pull(UMAP_2)),
                                         pointsize = pt_size - 1, color = '#D3D3D333',
                                         pixels = c(1750,750)) +
                        geom_scattermost(cbind(p_data$UMAP_1, p_data$UMAP_2),
@@ -129,17 +126,15 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
     names(color_list) <- color_data$value
     
     suppressWarnings(plot <- ggplot() +
-                       geom_scattermost(cbind(mf %>%
-                                                filter(is.na(!!as.symbol(meta_column))) %>% pull(UMAP_1),
-                                              mf %>%
-                                                filter(is.na(!!as.symbol(meta_column))) %>% pull(UMAP_2)),
-                                        pointsize = pt_size, color = '#D3D3D333',
+                       geom_scattermost(cbind(mf  %>% pull(UMAP_1),
+                                              mf %>% pull(UMAP_2)),
+                                        pointsize = input$pt_size_back, color = '#D3D3D333',
                                         pixels = c(1750,1750)) +
-                       geom_scattermore(data = p_data,
+                       geom_scattermore(data = p_data, alpha = 0.2,
                                         aes(x= UMAP_1, y=UMAP_2),
                                         color = np_color,
                                         pointsize= pt_size,
-                                        pixels=c(1750,1750),
+                                        pixels=c(1750,1750), 
                                         interpolate=FALSE) +
                        #geom_point(data=data.frame(x=double(0)), aes(x,x,color=x))  +
                        geom_point(data=color_data, aes(x,x,color=value), alpha = 0) +
