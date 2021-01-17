@@ -547,8 +547,27 @@ ctp3$plot + facet_wrap(~Platform)
 
 
 ```{r projection_fig, fig.width=12, fig.height=10,  fig.cap=projection_fig_cap, echo=FALSE, message = FALSE}
-projection_fig_cap <- supFig_cap(name='projection_fig', caption =  'bloop')
-1 + 1
+input[['pt_size_back']] <- 0
+input[['pt_size_meta']] <- 4
+#input[['gene_and_meta_scatter_tech']] <- 'Droplet'
+input[['meta_column_transform']] <- 'None'
+input[['meta_filter_cat']] <- 'CellType_predict'
+input[['meta_filter_on']] <- c('RPE')
+rpe <- make_meta_scatter_umap_plot(input, mf, meta_filter,
+                                   celltype_predict_labels,
+                                   celltype_labels,
+                                   tabulamuris_predict_labels,
+                                   cluster_labels,
+                                   cat_to_color_df
+)
+#
+
+colab_p <- ggdraw() + draw_image("figs_and_tables/colab_screenshot.png", scale = 0.7)
+
+plot_grid(rpe$plot , colab_p)
+
+
+
 ```
 
 
