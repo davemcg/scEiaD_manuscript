@@ -113,7 +113,7 @@ Even after re-quantification under identical conditions there remain study speci
 
 ## The projectable meta-atlas
 
-We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally using batch correction tools we can create a meta-atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we refer to as the single cell Eye in a Disk or scEiaD) by benchmarking integration outcomes across multiple important single cell RNA-seq processing parameters (batch removal method, number of hyper-variable genes (HVGs), clustering resolution, etc). The benchmarking system we developed uses a wide variety of metrics that we make easily available via the R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can both search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and project their own single cell data onto scEiaD for comparison and rich automatic cell labelling. Also the computational community can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment. As we believe data re-use is a powerful and efficient approach to facilitate discovery, we provide our meta-atlas code-base and propose general guidelines to optimally create custom meta-atlases.
+We propose that by re-processing publicly available raw single cell transcriptome data in a consistent bioinformatic framework and optimally using batch correction tools we can create a meta-atlas. As there are thousands of possible permutations of single cell tools, references, and parameter choices, we create our meta-atlas (which we refer to as the single cell Eye in a Disk or scEiaD) by benchmarking integration outcomes across multiple important single cell RNA-seq processing parameters (batch removal method, number of hyper-variable genes (HVGs), clustering resolution, etc.). The benchmarking system we developed uses a wide variety of metrics that we make easily available via the R package scPOP (single-cell Pick Optimal Parameters). The scEiaD will be of utility to two communities: the ocular community who can both search scEiaD for gene expression across many dimensions (e.g. cluster, cell type, study) and project their own single cell data onto scEiaD for comparison and rich automatic cell labelling. Also the computational community can use this very large, well-curated dataset to test algorithms for compute efficiency and performance in a diverse environment. As we believe data re-use is a powerful and efficient approach to facilitate discovery, we provide our meta-atlas code-base, the meta-atlas in several data formats, and propose general guidelines to optimally create custom meta-atlases.
 
 # Results
 
@@ -547,8 +547,10 @@ ctp3$plot + facet_wrap(~Platform)
 
 
 ```{r projection_fig, fig.width=12, fig.height=10,  fig.cap=projection_fig_cap, echo=FALSE, message = FALSE}
+projection_fig_cap <- supFig_cap(name='projection_fig', caption =  '')
 input[['pt_size_back']] <- 0
-input[['pt_size_meta']] <- 4
+input[['pt_size_meta']] <- 6
+input[['meta_column']] <- 'study_accession'
 #input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 input[['meta_filter_cat']] <- 'CellType_predict'

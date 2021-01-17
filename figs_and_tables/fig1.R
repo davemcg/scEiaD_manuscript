@@ -34,12 +34,7 @@ dagified <- dagify('counts' ~ 'fastq',
                    'DiffTesting' ~ 'cluster',
                    'SnakePOP' ~ 'BatchInfo',
                    'scVIrefquery' ~ 'BatchInfo',
-                   'Trajectory' ~ 'cluster',
-                   'Velocity' ~ 'LatentDims',
-                   'projectedCellType' ~ 'LatentDims',
-                   'Trajectory' ~ 'projectedCellType',
-                   'Trajectory' ~ 'LatentDims',
-                   'projectedCellType' ~ 'CellType')
+                   'projectedCellType' ~ 'LatentDims')
 
 tidy_dagitty(dagified)
 set.seed(2534)
