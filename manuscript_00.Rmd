@@ -228,12 +228,13 @@ dplot <- d  + facet_grid(vars(cluster), scale = 'free_y', space = 'free') + them
 
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_back']] <- 0
 input[['pt_size_meta']] <- 0
 #input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 input[['label_toggle']] <- 2
-#input[['meta_filter_cat']] <- 'CellType_predict'
-#input[['meta_filter_on']] <- 'Bipolar Cells'
+input[['meta_filter_cat']] <- 'CellType_predict'
+input[['meta_filter_on']] <- NULL
 ctp <- make_meta_scatter_umap_plot(input, mf, meta_filter,
                                    celltype_predict_labels,
                                    celltype_labels,
@@ -244,6 +245,7 @@ ctp <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_back']] <- 1
 input[['pt_size_meta']] <- 1
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
@@ -259,11 +261,12 @@ ctp2 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_back']] <- 0
 input[['pt_size_meta']] <- 0
 #input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
-#input[['meta_filter_cat']] <- 'CellType_predict'
-#input[['meta_filter_on']] <- 'Bipolar Cells'
+input[['meta_filter_cat']] <- 'CellType_predict'
+input[['meta_filter_on']] <- NULL
 org <- make_meta_scatter_umap_plot(input, mf, meta_filter,
                                    celltype_predict_labels,
                                    celltype_labels,
@@ -310,7 +313,7 @@ The photoreceptors (cones and rods) of the retina which are responsible for colo
 
 The hard work of creating this resource can be leveraged and extended by the wider community with a few relatively simple steps and modest compute requirements. Very briefly, if outside groups quantify their mouse or human scRNA with kallisto and the same references (see methods), they can overlay their data on top of scEiaD by 1. installing scVI >=0.8.1, 2. downloading our 13 megabyte scVI model, and 3. following the Jupyter notebook on Google colab that we provide as supplemental file BLOOP and as a live demo at http://colab.google. We demonstrate the power of this approach in two ways.
 
-First, we project another retina dataset onto scEiaD from Fadl et al . As this is a pan-retina tissue sample, we would expect most of the major cell types of the retina to be present. In the Google colab notebook we show how a set of the reads from SRR12130660 can be processed from the raw reads to a UMAP visualization overlapping our scEiaD in under 15 minutes. Indeed, as expected we see many amacrine, rods, muller glia, bipolar, a few cones and retinal ganglion, and a small number of non-retina cells (`r supFig_cap(name = 'projection_fig', display = 'cite')`b). 
+First, we project another retina dataset onto scEiaD from Fadl et al. As this is a pan-retina tissue sample, we would expect most of the major cell types of the retina to be present. In the Google colab notebook we show how a set of the reads from SRR12130660 can be processed from the raw reads to a UMAP visualization overlapping our scEiaD in under 15 minutes. Indeed, as expected we see many amacrine, rods, muller glia, bipolar, a few cones and retinal ganglion, and a small number of non-retina cells (`r supFig_cap(name = 'projection_fig', display = 'cite')`b). 
 
 Second, we demonstrate how the RPE derived from the Bharti iPSC differentiation method closely match tissue RPE from other studies (the largest being the Cowan et al data; `r supFig_cap(name = 'projection_fig', display = 'cite')`a). Cells generated with this process have been extensively validated with functional RPE tests. Our scRNA approach provides another layer of evidence that the Bharti iPSC-RPE differentation protocol generates RPE cells that are functionally equivalent to human adult RPE in an unbiased manner. 
 
@@ -360,7 +363,7 @@ While we removed droplet-based cells with more than 3,000 transcripts as these a
 
 ## xgboost based cell type model
 
-In order to identify cell types for the `r meta_filter %>% filter(is.na(CellType), is.na(TabulaMurisCellType))` unlabelledcells we designed a custom xgboost based cell type classifier. We took labeled data and split it into training and test sets, stratified by cell type. The input features used to train the model are the scVI latent dimensions, the total number of reads in each cell, the number genes detected in each cell, and the percent mitochondrial gene expression of each cell. We additionally generated features using the age of each sample by group sample into three developmental categories (Early Development, Late Development, and Adult) and then generated a one-hot encoded feature for each category. In order to speed up training times, we used the gpu implementation of the xgboost algorithm from the the xgboost python library. The model was trained using default parameters. The trained model had an overall F1 score of XXX an average precision and recall of XXX and XXX for each major retinal cell type. This model was then used to identify labels for each unlabelled cell. Unlabelled data was preprocessed identically to training data and fed into model to generate a vector of label probabilities for each cell. We selected the highest label probability for each cell, and required a minimum probability of .5 to assign a label to a cell. 
+In order to identify cell types for the `r format(meta_filter %>% filter(is.na(CellType), is.na(TabulaMurisCellType)) %>% nrow(), big.mark=",", scientific=FALSE)` unlabelledcells we designed a custom xgboost based cell type classifier. We took labeled data and split it into training and test sets, stratified by cell type. The input features used to train the model are the scVI latent dimensions, the total number of reads in each cell, the number genes detected in each cell, and the percent mitochondrial gene expression of each cell. We additionally generated features using the age of each sample by group sample into three developmental categories (Early Development, Late Development, and Adult) and then generated a one-hot encoded feature for each category. In order to speed up training times, we used the gpu implementation of the xgboost algorithm from the the xgboost python library. The model was trained using default parameters. The trained model had an overall F1 score of XXX an average precision and recall of XXX and XXX for each major retinal cell type. This model was then used to identify labels for each unlabelled cell. Unlabelled data was preprocessed identically to training data and fed into model to generate a vector of label probabilities for each cell. We selected the highest label probability for each cell, and required a minimum probability of .5 to assign a label to a cell. 
 
 <!-- ## pseudobulk differential expression testing -->
 
@@ -524,6 +527,7 @@ Spacing
 supFig_platformInt_cap <- supFig_cap(name='supFig_platformInt', caption =  '')
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
+input[['pt_size_back']] <- 5
 input[['pt_size_meta']] <- 5
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
@@ -539,6 +543,12 @@ ctp3 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
 
 
 ctp3$plot + facet_wrap(~Platform)
+```
+
+
+```{r projection_fig, fig.width=12, fig.height=10,  fig.cap=projection_fig_cap, echo=FALSE, message = FALSE}
+projection_fig_cap <- supFig_cap(name='projection_fig', caption =  'bloop')
+1 + 1
 ```
 
 

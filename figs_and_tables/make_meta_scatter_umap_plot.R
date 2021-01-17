@@ -77,9 +77,13 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
     cat('log2 time')
     meta_filter[,meta_column] <- log2(meta_filter[,meta_column] + 1)
   }
+  if (!is.null(input$meta_filter_on)){
   p_data <- meta_filter %>%
     #filter(!grepl('Doub|\\/Margin\\/Periocular', CellType)) %>%
     filter_at(vars(all_of(input$meta_filter_cat)), all_vars(. %in% input$meta_filter_on))
+  } else {
+    p_data <- meta_filter %>% filter(!is.na(!!as.symbol(input$meta_column)))
+  }
   
   # metadata NUMERIC plot --------------
   if (is.numeric(meta_filter[,meta_column] %>% pull(1)) ){
