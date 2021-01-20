@@ -37,7 +37,7 @@ dagified <- dagify('counts' ~ 'fastq',
                    'projectedCellType' ~ 'LatentDims')
 
 tidy_dagitty(dagified)
-set.seed(2534)
+set.seed(51345)
 b <- tidy_dagitty(dagified) %>% as_tbl_graph() %>% 
   mutate(type = case_when(name %in% c('fastq', 'CellType', 'BatchInfo') ~ 'Input',
                           name %in% c('DiffTesting', 'Velocity', 'Trajectory','umap', 'projectedCellTypes','cluster') ~ 'Outputs'),
@@ -46,9 +46,9 @@ b <- tidy_dagitty(dagified) %>% as_tbl_graph() %>%
                           name == 'DiffTesting' ~ 'Diff\nTesting',
                           name == 'scVIrefquery' ~ 'scVI Ref +\nQuery',
                           name == 'LatentDims' ~ 'Latent Dims',
-                          name == 'BatchInfo' ~ 'Batch Info',
+                          name == 'BatchInfo' ~ 'Batch\nInfo',
                           TRUE ~ name)) %>% 
-  ggraph(layout = 'kk') + 
+  ggraph(layout = 'gem') + 
   geom_edge_link(arrow = arrow(length = unit(3, 'mm')), 
                  end_cap = circle(9, 'mm'), start_cap = circle(2, 'mm')) + 
   #geom_node_point(size = 10) +
