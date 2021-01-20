@@ -67,9 +67,9 @@ for (i in x2$pm_query2){
 #   pmid2[[i]] <- pubmed_counter(i)
 # }
 
-save(pmid, pmid2, pmid3, file = '~/data/massive_integrated_eye_scRNA/top_marker_pmid.Rdata')
+save(pmid, pmid2, pmid3, file = '~/data/scEiaD/top_marker_pmid.Rdata')
 top_markers$c1 <- pmid %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value)
 top_markers$c2 <- pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value)
-save(top_markers, marker_info, exp_stats, file = '~/data/massive_integrated_eye_scRNA/top_markers.Rdata')
+save(top_markers, marker_info, exp_stats, file = '~/data/scEiaD/top_markers.Rdata')
 #pmid %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe()
 #pmid %>% map(function(x) paste %>% unlist() %>% enframe()
