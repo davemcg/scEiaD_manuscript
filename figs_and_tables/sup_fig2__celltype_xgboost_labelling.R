@@ -1,6 +1,6 @@
 ct_processing <-  meta_filter %>% 
   #filter(CellType %in% common) %>% 
-  filter(is.na(CellType) | CellType != 'Mast') %>% 
+  filter(!is.na(CellType), CellType_predict != 'Tabula Muris') %>% 
   filter(!(!Platform %in% c('10xv2','10xv3','DropSeq') & CellType_predict == 'Unlabelled'  )) %>% 
   filter(!(!Platform %in% c('10xv2','10xv3','DropSeq') & CellType_predict == 'Muller Glia Progenitor'  )) %>% 
   mutate(CellType = case_when(is.na(CellType) ~ 'Unlabelled', 
@@ -73,7 +73,9 @@ ct_mat <- ct_processing %>%
   summarise(Count = n()) %>% 
   mutate(Ratio = Count / sum(Count)) %>% 
   select(-Count) %>% 
-  pivot_wider(values_from = Ratio, names_from = CellType_predict)
+  #filter(!CellType_predict %in% c('Astrocytes', 'Artery',  'Choriocapillaris', 'Tabula Muris','B-Cell','T-Cell', 'Smooth Muscle Cell', 'Unlabelled'), !CellType %in% c('Astrocytes','Artery','Choriocapillaris','Tabula Muris','B-Cell','T-Cell', 'Smooth Muscle Cell')) %>% 
+  #filter(!CellType_predict %in% c('Astrocytes', 'Artery',  'Choriocapillaris', 'Tabula Muris','Smooth Muscle Cell', 'Unlabelled'), !CellType %in% c('Astrocytes','Artery','Choriocapillaris', 'Smooth Muscle Cell')) %>% 
+  pivot_wider(values_from = Ratio, names_from = CellType_predict) 
 ct_mat[is.na(ct_mat)] <- 0
 #ct_mat <- data.frame(ct_mat)
 

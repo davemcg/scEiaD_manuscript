@@ -1,7 +1,7 @@
 load('~/data/scEiaD//metrics_2020_11_28.Rdata')
 perfO <- perf
 
-load('~/data/scEiaD//merged_stats_2021_01_01.Rdata')
+load('~/data/scEiaD//merged_stats_2021-02-05.Rdata')
 
 perf <- perf %>% 
   mutate(knn = case_when(method == 'scArches' ~ 7, TRUE ~ knn))
@@ -100,7 +100,7 @@ zscore_sum_all_methods <- zscore_tabula  %>%
 
 zscore_droplet_scVI_optimize <- perf_scVI%>% 
   filter(knn > 0.4, knn < 10) %>% 
-  filter(grepl('scVI', method)) %>% 
+  filter(grepl('scVI', method), epochs == 5) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   mutate(sumZScale = 
            -scale(LISI_CellType)[,1] +

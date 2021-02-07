@@ -49,6 +49,7 @@ library(grid)
 library(ComplexHeatmap)
 library(viridis)
 library(Matrix)
+library(MatrixGenerics)
 library(matrixStats)
 # setup caption-ing
 fig_cap <- captioner("Figure")
@@ -56,7 +57,7 @@ supFig_cap <- captioner("Supplemental Figure")
 #tab_cap <- captioner("Table")
 supTab_cap <- captioner("Supplemental Table")
 
-scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.2-500-0.6.sqlite", idleTimeout = 3600000)
+scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/2021_02_05_MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-0.6.sqlite", idleTimeout = 3600000)
 
 meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
 meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
@@ -71,7 +72,7 @@ meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_pred
 
 
 # meta data before doublet removal
-load('~/data/scEiaD/n_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.2__neighbors-500.umap.Rdata')
+load('~/data/scEiaD/n_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.1__neighbors-50.umap.Rdata')
 umapRef <- umap
 
 methods <- factor(c('scArches', 'bbknn','insct','magic', 'scVI','CCA', 'scanorama', 'harmony', 'fastMNN', 'combat', 'none'), levels = c('bbknn','CCA','combat','fastMNN','harmony','insct','magic','scanorama','scArches','scVI', 'none')) 
@@ -81,8 +82,8 @@ gse <- read_tsv('~/git/scEiaD/data/GEO_Study_Level_Metadata.tsv')
 qc <- readr::read_tsv('~/data/scEiaD/QC.tsv.gz')
 
 # cell type prediction
-load('~/data/scEiaD/PREDICTIONSn_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaDprojected__dist-0.2__neighbors-500.Rdata')
-test_predictions <- data.table::fread('~/data/scEiaD/981791_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
+load('~/data/scEiaD/PREDICTIONSn_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaD__dist-0.1__neighbors-50.Rdata')
+test_predictions <- data.table::fread('~/data/scEiaD/390498_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
   mutate(max_pred_prob = rowMaxs(.[,-(33:36)] %>% as.matrix ), 
          pred_correct = ifelse(cell_type_id == true_cell_id, 'Correct', 'incorrect'))
 # created by running 'source' on src/make_dotplot_markers.R
@@ -204,7 +205,7 @@ To further study cell type specific expression patterning we needed to label the
 
 <!-- ## ML cell type predictor has high accuracy across most cell types -->
 
-The precision recall (PR) curve visualizes the ability of the model to precisely label known cells at a given confidence. The area under the PR curve (AUC) summarizes the effectiveness of the model across different cell types, with 1 being the highest performance. The xgboost model can predict rods, bipolar cells, and Muller glia with near perfect performance (`r fig_cap(name = 'supFig_PR', display = 'cite')`). Most of the remaining cell types can be predicted with an AUC of well over 0.9. The cell types that were the most challenging for the model to predict were the artery, choriocapillaris, and vein. Artery, choriocapillaris, and vein are constructed from endothelial cells and we find that for all three of these, endothelial was the second most common label. The ML model also performs under 0.9 for predicting the neurogenic cell type label; however the most next common label that is predicts are the highly related retinal progenitor populations (RPCs) (`r supTab_cap(name = 'supTab_CTmislabels', display = 'cite')`). Overall, our xgboost based ML model shows strong accuracy across the major cell types of the retina. 
+The precision recall (PR) curve visualizes the ability of the model to precisely label known cells at a given confidence. The area under the PR curve (AUC) summarizes the effectiveness of the model across different cell types, with 1 being the highest performance. The xgboost model can predict rods, bipolar cells, and Müller glia with near perfect performance (`r fig_cap(name = 'supFig_PR', display = 'cite')`). Most of the remaining cell types can be predicted with an AUC of well over 0.9. The cell types that were the most challenging for the model to predict were the artery, choriocapillaris, and vein. Artery, choriocapillaris, and vein are constructed from endothelial cells and we find that for all three of these, endothelial was the second most common label. The ML model also performs under 0.9 for predicting the neurogenic cell type label; however the most next common label that is predicts are the highly related retinal progenitor populations (RPCs) (`r supTab_cap(name = 'supTab_CTmislabels', display = 'cite')`). Overall, our xgboost based ML model shows strong accuracy across the major cell types of the retina. 
 
 <!-- ## Certain retina cell types have more stable community consensus IDs -->
 
@@ -220,9 +221,8 @@ source('figs_and_tables/dotplot.R')
 # markers for dotplot
 input <- list()
 input[['dotplot_Gene']] <- top_markers %>%  
-  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE|Micro', cluster), D_KL > 0.2) %>%  
-  group_by(cluster)  %>% 
-  slice_max(mean_auc, n =5) %>% 
+  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE', cluster), !grepl('C1orf|MT-', Gene), `log.p.adj` < -10000) %>%  
+  group_by(cluster) %>% slice_max(mean_auc, n =5) %>% 
   pull(Gene)
 input[['dotplot_groups']] <- c('CellType_predict')
 input[['dotplot_filter_cat']] <- 'CellType_predict'
@@ -260,7 +260,7 @@ input[['pt_size_meta']] <- 2
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 input[['meta_filter_cat']] <- 'CellType_predict'
-input[['meta_filter_on']] <- c('AC/HC Precursors','Amacrine Cells','Astrocytes','Bipolar Cells','Cones','Early RPCs','Endothelial','Horizontal Cells','Late RPCs','Microglia','Muller Glia','Neurogenic Cells','Pericytes','PR Precursors','Red Blood Cells','Retinal Ganglion Cells','Rod Bipolar Cells','Rods','RPCs','RPE','Schwann','Tabula Muris')
+input[['meta_filter_on']] <- c('AC/HC Precursors','Amacrine Cells','Astrocytes','Bipolar Cells','Cones','Early RPCs','Endothelial','Horizontal Cells','Late RPCs','Microglia','Muller Glia','Neurogenic Cells','Pericytes','PR Precursors','Retinal Ganglion Cells','Rod Bipolar Cells','Rods','RPCs','RPE','Tabula Muris')
 ctp2 <- make_meta_scatter_umap_plot(input, mf, meta_filter,
                                     celltype_predict_labels,
                                     celltype_labels,
@@ -304,7 +304,7 @@ plot_grid(dplot + theme(legend.title = element_text(angle = 90),
 
 After ML projection of cell type labels from the original `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` labels onto a total of `r meta_filter %>% filter(!is.na(CellType_predict) | !is.na(TabulaMurisCellType_predict)) %>% nrow()` cells we have substantially improved the number of studies per cell type. For example, we went from `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(2)` human studies with labelled Muller Glia to `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(5)` after labeling (`r supTab_cap(name = 'supTab_SAcounts', display = 'cite')`). Overall we go from an average of `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(2) %>% mean()` studies per human cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(5) %>% mean()` and `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(4) %>% mean()` studies per mouse cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(7) %>% mean()` after transferring the cell type labels. 
 
-As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. We expect most of the genes identified to be known in the literature. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a), 40 had one or more citations in the gene - cell type search (table X) and 51 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(mean_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
+As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. We expect most of the genes identified to be known in the literature. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a), 39 had one or more citations in the gene - cell type search (table X) and 48 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(mean_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
 
 The four genes with zero hits were SCRG1 (Astrocytes), BTBD8 (Bipolar Cells), GATM (Microglia), and FRZB (Muller Glia). In a more exhaustive literature search we find that SCRG1 is a secreted protein which marks brain neurons, regulates human mesenchymal stem cells differentiation, and is overexpressed in brain astrocyte precursors [@aomatsuNovelSCRG1BST12014; @chaboubTemporalProfilingAstrocyte2016]. BTBD8 contains BTB/POZ domains known to generally be associated with with transcription factor mediated protein-protein interactions and has been seen to be overexpresed in enteric neurons [@xuMolecularCloningCharacterization2004; @zollmanBTBDomainFound1994; @drokhlyansky_human_2020]. GATM is mitochondrial enzyme involved in creatine biosynthesis and was previously shown to up-regulated in a brain microglia population [@hammondSingleCellRNASequencing2019]. FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia [@zhuCharacterizationCanonicalWnt2018]. Overall, as expected, we find very high concordance with known retina cell type markers.
 
@@ -397,7 +397,7 @@ To identify marker genes across the CellType (predict) and cluster groups, we us
 
 # Limitations   
 
-The scVI model is first built the on human data. The mouse and macaque data are then projected (or queried) onto it with the scVI/scArches approach. While this system works very well to integrate information between these three species, this approach may not scale to more distantly related species. Another limitations is that discrepancies between cell type labels between different labs makes certain transitioning cell type labels a bit imprecise. One example is how the rods and photoreceptor precursor labels overlap somewhat. Though we attempted to ameliorate the issue by removing cell type labels in large disagreement with the consensus our cell type labels are effectively "crowd-sourced" and some disagreements can propagate into our labeled cells. 
+The scVI model is first built the on human data. The mouse and macaque data are then projected (or queried) onto it with the scVI - scArches approach. While this system works very well to integrate information between these three species, this approach may not scale to more distantly related species. Another limitation is that discrepancies between cell type labels between different labs makes certain transitioning cell type labels a bit imprecise. One example is how the rods and photoreceptor precursor labels overlap somewhat. Though we attempted to ameliorate the issue by removing cell type labels in large disagreement with the consensus our cell type labels are effectively "crowd-sourced" and some disagreements can propagate into our labeled cells. As much of the data we used was 3' biased (10X, DropSeq), we decided to collapse all transcript specific information into the gene level.  
 
 ## The scEiaD is a unique ocular resource that provides a highly diverse, large N dataset with a relatively small amount of compute power
 
@@ -435,8 +435,8 @@ supTab_CTmislabels_cap <- supTab_cap(name='supTab_CTmislabels', caption =  'Coun
 cat("<div id=\"tbl:supTab_CTmislabels\">")
 #source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
 fontsize(predictions %>%  
-           mutate(max_pred_prob = rowMaxs(.[,-(31:ncol(predictions))] %>% as.matrix )) %>% 
-           select(-cell_type_id) %>% 
+           mutate(max_pred_prob = rowMaxs(.[,-(30:ncol(predictions))] %>% as.matrix )) %>% 
+           select(-CellTypeID) %>% 
            rename(PredCellType = CellType) %>% 
            inner_join(umapRef %>% select(Barcode, TrueCellType = CellType)) %>% 
            filter(!is.na(TrueCellType)) %>% 

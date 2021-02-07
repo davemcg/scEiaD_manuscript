@@ -14,8 +14,8 @@ make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
   grouping_features <- input$dotplot_groups
   
   # ct order
-  ct_order <- data.frame(CT = c('Cones','Rods','RPE', 'Retinal Ganglion Cells', 'Astrocytes','Amacrine Cells','Bipolar Cells','Rod Bipolar Cells','Horizontal Cells','Muller Glia', 'Microglia'),
-                         Order = c(1,2,3,4,5,6,7,8,9,10, 11))
+  ct_order <- data.frame(CT = c('Cones','Rods','RPE', 'Retinal Ganglion Cells', 'Astrocytes','Amacrine Cells','Bipolar Cells','Rod Bipolar Cells','Horizontal Cells','Muller Glia'),
+                         Order = c(1,2,3,4,5,6,7,8,9,10))
   if (input$dotplot_filter_cat != ''){
     dotplot_data <- db %>% tbl('grouped_stats') %>%
       filter(Gene %in% gene) %>%

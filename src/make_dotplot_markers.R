@@ -2,7 +2,7 @@ library(pool)
 library(RSQLite)
 library(tidyverse)
 library(glue)
-scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.2-500-0.6.sqlite", idleTimeout = 3600000)
+scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/2021_02_05_MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-0.6.sqlite", idleTimeout = 3600000)
 
 meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
 meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
@@ -16,27 +16,28 @@ meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_pred
 markers_summary <- scEiaD_2020_v01 %>% 
   tbl('wilcox_diff_testing') %>% 
   group_by(Base, Gene) %>% 
-  summarise(count = sum(AUC > 0.7), 
+  summarise(auc_count = sum(AUC > 0.5), 
             pval = min(`p.value`),
             FDR = min(FDR),
             mean_auc = mean(AUC)) %>% 
-  mutate(cluster = Base)
+  mutate(cluster = Base) %>% 
+  as_tibble()
 
 marker_info <-  markers_summary %>% 
   #filter(pval < 1) %>% 
-  group_by(cluster) %>% 
+  #group_by(cluster) %>% 
   #top_n(4, meauc) %>% 
   #filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|RPE|Astro', cluster)) %>% 
-  data.frame() %>% 
+  as_tibble() %>% 
   left_join(scEiaD_2020_v01 %>% 
               tbl('genes') %>% 
               collect() %>% 
               mutate(gene = str_extract(Gene, 'ENSG\\d+'))) %>% 
-  left_join(marker_list %>% 
-              bind_rows(.id = 'cluster') %>% 
-              group_by(cluster)) %>% 
-              #top_n(5, L4) %>% 
-              #filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE', cluster))) #%>% 
+  # left_join(marker_list %>% 
+  #             bind_rows(.id = 'cluster') %>% 
+  #             group_by(cluster)) %>% 
+  #             #top_n(5, L4) %>% 
+  #             #filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE', cluster))) #%>% 
   left_join(scEiaD_2020_v01 %>% tbl('haystack') %>% collect())
 
 genes <- marker_info$Gene %>% unique()
@@ -61,10 +62,10 @@ exp_stats <- scEiaD_2020_v01 %>% tbl('grouped_stats') %>%
 top_markers <- marker_info %>% 
   left_join(exp_stats %>% dplyr::rename(cluster = CellType_predict)) %>% 
   mutate(pval = as.numeric(pval), FDR = as.numeric(FDR)) %>% 
-  filter((FDR < 1 |  med_auc > 0.20 | L1 > 50), D_KL > 0.15, `%` > 20) %>% 
+  filter((FDR < 1 |  mean_auc > 0.10), D_KL > 0.15, `%` > 10) %>% 
   group_by(Gene) %>% 
-  slice_max(order_by = med_auc) %>% 
-  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE|Micro', cluster))
+  slice_max(order_by = `%`) %>% 
+  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Mast|Bipol|Astro|RPE|Micro', cluster), !grepl('^NA', Gene))
 
 #save(top_markers, marker_info, exp_stats, file = '~/data/massive_integrated_eye_scRNA/top_markers.Rdata')
 source('src/pubmed_query.R')
