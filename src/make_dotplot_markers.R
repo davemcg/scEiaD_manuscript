@@ -16,10 +16,12 @@ meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_pred
 markers_summary <- scEiaD_2020_v01 %>% 
   tbl('wilcox_diff_testing') %>% 
   group_by(Base, Gene) %>% 
-  summarise(auc_count = sum(AUC > 0.5), 
+  summarise(auc_count_05 = sum(AUC > 0.5),
+            auc_count_02 = sum(AUC > 0.2), 
             pval = min(`p.value`),
             FDR = min(FDR),
-            mean_auc = mean(AUC)) %>% 
+            mean_auc = mean(AUC),
+            median_auc = median(AUC)) %>% 
   mutate(cluster = Base) %>% 
   as_tibble()
 
@@ -58,14 +60,17 @@ exp_stats <- scEiaD_2020_v01 %>% tbl('grouped_stats') %>%
          Expression = round(cpm * (`%` / 100), 2)) %>%
   select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
   arrange(-Expression) 
-# D_KL > 0.15
+
 top_markers <- marker_info %>% 
   left_join(exp_stats %>% dplyr::rename(cluster = CellType_predict)) %>% 
   mutate(pval = as.numeric(pval), FDR = as.numeric(FDR)) %>% 
-  filter((FDR < 1 |  mean_auc > 0.10), D_KL > 0.15, `%` > 10) %>% 
+  filter((FDR < 1 |  mean_auc > 0.10), `log.p.adj` < -1000, `%` > 10, auc_count_02 > 0) %>% 
   group_by(Gene) %>% 
   slice_max(order_by = `%`) %>% 
-  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Mast|Bipol|Astro|RPE|Micro', cluster), !grepl('^NA', Gene))
+  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Mast|Bipol|Astro|RPE', cluster), !grepl('^NA', Gene)) %>% 
+  ungroup() %>% 
+  group_by(Base) %>% 
+  slice_max(order_by = `mean_auc`, n = 50)
 
 #save(top_markers, marker_info, exp_stats, file = '~/data/massive_integrated_eye_scRNA/top_markers.Rdata')
 source('src/pubmed_query.R')

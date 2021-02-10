@@ -88,8 +88,6 @@ test_predictions <- data.table::fread('~/data/scEiaD/390498_CTpredictortest_data
          pred_correct = ifelse(cell_type_id == true_cell_id, 'Correct', 'incorrect'))
 # created by running 'source' on src/make_dotplot_markers.R
 load('~/data/scEiaD/top_markers.Rdata')
-
-# pmid search
 load('~/data/scEiaD/top_marker_pmid.Rdata')
 ```
 
@@ -124,7 +122,7 @@ We propose that by re-processing publicly available raw single cell transcriptom
 
 ## We identify `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` ocular scRNA datasets across 3 species
 
-The first step in building a meta-atlas is identifying studies to draw the data from. We identified ocular single cell RNA sequencing (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome." We then hand filtered the results to only keep ocular and normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. On September 2020 we identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r fig_cap(name = 'fig1', display = 'cite')`). In December 2020 we ran our search again, find N studies to project onto scEiaD. To provide a non-ocular reference we also downloaded the raw sequence data from the Tabula Muris project for re-processing. In cases where the fastq file from the SRA was not processed properly, we acquired the bam files (SRA or personal correspondence) and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
+The first step in building a meta-atlas is identifying studies to draw the data from. We identified ocular single cell RNA sequencing (scRNA) studies by querying PubMed, the Sequence Read Archive (SRA), and the European Nucleotide Archive (ENA) for the inclusive terms "retina", "single cell", "scRNA", "ocular", "eye", "transcriptome." We then hand filtered the results to only keep ocular and normal (non-perturbed or mutagenized) data from single cell RNA-seq technology. On December 2020 we identified `r meta_filter %>% pull(study_accession) %>% unique() %>% length() - 1` deposited datasets that have been published in `r meta_filter %>% pull(Citation) %>% unique() %>% length()` publications (`r fig_cap(name = 'fig1', display = 'cite')`). To provide a non-ocular reference we also downloaded the raw sequence data from the Tabula Muris project for re-processing. In cases where the fastq file from the SRA was not processed properly, we acquired the bam files (SRA or personal correspondence) and re-extracted the fastq. After downloading all the data we had 5.7 TB across `r scEiaD_2020_v01 %>% tbl('metadata_filter') %>% pull(sample_accession) %>% unique() %>% length()` fastq file sets. 
 
 ```{r fig1, fig.width=12, fig.height=6, fig.cap=fig1_cap, echo=FALSE, message = FALSE, warning = FALSE}
 fig1_cap <- fig_cap(name='fig1', caption =  'a. Cartoon schematic of retina with major cell types delinearted b. Simplified directed workflow of major steps in scEiaD creation from raw counts to gene counts, benchmarking optimal integration methods (SnakePOP) to produce batch corrected latent dimensions (LatentDims), then downstream analysis outputs like clustering, differential gene testing (DiffTesting), and 2D UMAP visualization. c. Counts of (study) accession, published papers, and batches for each scRNA technlogy, split by organism. d. Cell type counts extracted from published studies for the more common retina cell types, split by species. Count of study accessions for each species overlaid on bar plot.')
@@ -143,7 +141,7 @@ plot_grid(
 
 Gene-level counts were quantified with the kallisto bustool pseudo-aligner for both the droplet and well based samples. After empty droplet removal, we had `r format(qc %>% nrow() %>% as.integer() , big.mark=",", scientific=FALSE)` cells. We then created a Seurat v3 object, calculated the percent mitochondrial genes counts, and removed cells which had more than 10% mitochondrial reads across all gene counts. For the droplet-based data, we also removed cells which had more than 3000 unique genes detected as these are likely to be doublets. After these standard quality control steps we were left with `r format(umapRef %>% nrow, big.mark = ",", scientific=FALSE)` cells. 
 
-A core objective of many scRNA based studies is labeling the cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of inspecting the GEO web site, supplemental information from the publication, custom web resources (e.g. a web app was created for the paper), and personal correspondence. After normalizing cell type name nomenclature, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types (`r supTab_cap(name = 'supTab1_CTcounts', display = 'cite')`). 
+A core objective of many scRNA based studies is labeling the cell types. As this information is crucial to assess dataset integration and provide an accurate reference for user querying, we extracted individual cell labels with a combination of inspecting the GEO web site, supplemental information from the publication, and web resources (e.g. a web app was created for the paper), and personal correspondence. After normalizing cell type name nomenclature, we obtained labels for `r meta_filter$CellType %>% table() %>% sum()` cells across `r meta_filter$CellType %>% table() %>% length()` cell types (`r supTab_cap(name = 'supTab1_CTcounts', display = 'cite')`). 
 
 ## Running `r methods %>% length()` tools in a Snakemake-based system
 
@@ -221,13 +219,20 @@ source('figs_and_tables/dotplot.R')
 # markers for dotplot
 input <- list()
 input[['dotplot_Gene']] <- top_markers %>%  
-  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE', cluster), !grepl('C1orf|MT-', Gene), `log.p.adj` < -10000) %>%  
+  filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE', cluster)) %>%  
   group_by(cluster) %>% slice_max(mean_auc, n =5) %>% 
   pull(Gene)
+# bipolar have none with auc_count > 0, so run again
+# input[['dotplot_Gene']] <- c(input[['dotplot_Gene']], 
+#                              top_markers %>%  
+#   filter(cluster %in% c('Amacrine Cells', 'Bipolar Cells'), !grepl('C1orf|MT-', Gene), `log.p.adj` < -10000) %>%  
+#   group_by(cluster) %>% slice_min(`log.p.adj`, n =5) %>% 
+#   pull(Gene))
+dplot_markers <- input[['dotplot_Gene']]
 input[['dotplot_groups']] <- c('CellType_predict')
 input[['dotplot_filter_cat']] <- 'CellType_predict'
 input[['dotplot_filter_on']] <- (meta_filter %>%
-                                   filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE|Micro', CellType_predict)) %>% 
+                                   filter(grepl('Amacrine|Rod|Cone|Retinal|Muller|Horizon|Bipol|Astro|RPE', CellType_predict)) %>% 
                                    pull(CellType_predict) %>% unique())
 d <- make_dotplot(input, scEiaD_2020_v01, meta_filter, cat_to_color_df)
 dplot <- d  + facet_grid(vars(cluster), scale = 'free_y', space = 'free') + theme(
@@ -304,9 +309,9 @@ plot_grid(dplot + theme(legend.title = element_text(angle = 90),
 
 After ML projection of cell type labels from the original `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` labels onto a total of `r meta_filter %>% filter(!is.na(CellType_predict) | !is.na(TabulaMurisCellType_predict)) %>% nrow()` cells we have substantially improved the number of studies per cell type. For example, we went from `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(2)` human studies with labelled Muller Glia to `r joinedSA %>% filter(CellType == 'Muller Glia') %>% pull(5)` after labeling (`r supTab_cap(name = 'supTab_SAcounts', display = 'cite')`). Overall we go from an average of `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(2) %>% mean()` studies per human cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(5) %>% mean()` and `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(4) %>% mean()` studies per mouse cell type to `r joinedSA %>% filter(CellType != 'Unlabelled') %>% pull(7) %>% mean()` after transferring the cell type labels. 
 
-As another check on the quality of the cell type assignments, we ran pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. We expect most of the genes identified to be known in the literature. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6G AND Retina"). Of the 55 genes in (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a), 39 had one or more citations in the gene - cell type search (table X) and 48 had one or more citation in the inclusive search. The 55 genes had a mean of `r top_markers %>% group_by(cluster)  %>% slice_max(mean_auc, n =5) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round`. 
+As another check on the quality of the cell type assignments, we ran the cell and cluster independent haystack gene search and pairwise differential expression tests between the predicted cell types (see methods for further details). We show the five most consistently differentially expressed genes for each of the major retina cell types (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a). As a simple metric to identify known and unknown genes relating to the cell type specific expression we search PubMed for the number of publications with two searches per gene. We expect most of the genes identified to be known in the literature. The first search is the more precise "gene AND cell type" (e.g. "PDE6H AND Cones") and the second search is the more inclusive "gene AND retina" (e.g. "PDE6H AND Retina"). Of the 50 genes in (`r fig_cap(name = 'figXGboost_umap', display = 'cite')`a), `r 50 - top_markers %>% filter(Gene %in% dplot_markers) %>% filter(c1 == 0) %>% nrow` had one or more citations in the gene - cell type search (table X) and `r 50 - top_markers %>% filter(Gene %in% dplot_markers) %>% filter(c1 == 0, c2 == 0) %>% nrow` had one or more citation in the inclusive search. The 50 genes had a mean of `r top_markers %>% filter(Gene %in% dplot_markers) %>% pull(c2) %>% mean() %>% round()` studies (with the inclusive gene by "retina" search). In contrast, 100 randomly chosen genes had a mean of `r pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value) %>% mean() %>% round` (wilcox test p < 2.5 x 10**-12). 
 
-The four genes with zero hits were SCRG1 (Astrocytes), BTBD8 (Bipolar Cells), GATM (Microglia), and FRZB (Muller Glia). In a more exhaustive literature search we find that SCRG1 is a secreted protein which marks brain neurons, regulates human mesenchymal stem cells differentiation, and is overexpressed in brain astrocyte precursors [@aomatsuNovelSCRG1BST12014; @chaboubTemporalProfilingAstrocyte2016]. BTBD8 contains BTB/POZ domains known to generally be associated with with transcription factor mediated protein-protein interactions and has been seen to be overexpresed in enteric neurons [@xuMolecularCloningCharacterization2004; @zollmanBTBDomainFound1994; @drokhlyansky_human_2020]. GATM is mitochondrial enzyme involved in creatine biosynthesis and was previously shown to up-regulated in a brain microglia population [@hammondSingleCellRNASequencing2019]. FRZB was previously referred to as SFRP3 and this Wnt pathway member has been previously shown to be active in Muller Glia [@zhuCharacterizationCanonicalWnt2018]. Overall, as expected, we find very high concordance with known retina cell type markers.
+<!-- (broom::tidy(wilcox.test(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% pull(value), top_markers %>% filter(Gene %in% dplot_markers) %>% pull(c2))))$p.value -->
 
 ## The scVI-based scEiaD UMAP projection blends batches while separating cell types
 
@@ -381,7 +386,7 @@ In order to identify cell types for the `r format(meta_filter %>% filter(is.na(C
 
 ## Marker gene identification
 
-To identify marker genes across the CellType (predict) and cluster groups, we used the scran findmarkers (wilcox test) along with the singleCellHaystack algorithm. The scran findmarkers test runs a wilcox test in a pairwise manner (e.g. Rods vs all other cell types). It returns an overall p-value (and FDR) that assesses how well the gene is at separating the group of interest from all other cells. It also returns for each pair-wise comparison an area under the curve (AUC) score, where 1 is a perfect power to distinguish and 0 is no power. The singleCellHaystack uses a Kullback-Leibler divergence measurement of the scVI lower dimensional space to identify genes with non-random distribution. A higher "D KL" score represents a gene with "specific" expression in teh UMAP/lower dimensional space. We filtered to keep genes with FDR < 0.01 and a mean AUC > 0.2 or  a D KL > 0.2. 
+To identify marker genes across the CellType (predict) and cluster groups, we used the scran findmarkers (wilcox test) along with the singleCellHaystack algorithm. The scran findmarkers test runs a wilcox test in a pairwise manner (e.g. Rods vs all other cell types). It returns an overall p-value (and FDR) that assesses how well the gene is at separating the group of interest from all other cells. It also returns for each pair-wise comparison an area under the curve (AUC) score, where 1 is a perfect power to distinguish and 0 is no power. The singleCellHaystack algorithm uses a Kullback-Leibler divergence (D KL) measurement of the scVI lower dimensional space to identify genes with non-random distribution. A higher D KL score represents a gene with "specific" expression in the lower dimensional space and is used to calculate a FDR corrected p value against the full distribution of D KL values. We filtered to keep genes with scran FDR < 1, a mean AUC > 0.2, and a log10(D KL FDR) < -10000.  No more than 50 genes for each cell type were retained (sorted by mean AUC).
 
 <!-- ## Trajectory -->
 
@@ -397,7 +402,7 @@ To identify marker genes across the CellType (predict) and cluster groups, we us
 
 # Limitations   
 
-The scVI model is first built the on human data. The mouse and macaque data are then projected (or queried) onto it with the scVI - scArches approach. While this system works very well to integrate information between these three species, this approach may not scale to more distantly related species. Another limitation is that discrepancies between cell type labels between different labs makes certain transitioning cell type labels a bit imprecise. One example is how the rods and photoreceptor precursor labels overlap somewhat. Though we attempted to ameliorate the issue by removing cell type labels in large disagreement with the consensus our cell type labels are effectively "crowd-sourced" and some disagreements can propagate into our labeled cells. As much of the data we used was 3' biased (10X, DropSeq), we decided to collapse all transcript specific information into the gene level.  
+The scVI model is first built the on human data. The mouse and macaque data are then projected (or queried) onto it with the scVI - scArches approach. While this system works very well to integrate information between these three species, this approach may not scale to more distantly related species. Another limitation is that discrepancies between cell type labels between different labs makes certain transitioning cell type labels a bit imprecise. One example is how the rods and photoreceptor precursor labels overlap somewhat. Though we attempted to ameliorate the issue by removing cell type labels in large disagreement with the consensus, some disagreements can propagate into our labeled cells. As much of the data we used was 3' biased (10X, DropSeq), we decided to collapse all transcript specific information into the gene level. While scEiaD distinguishes the cell types very well, for some of the cell types there exist many "sub types" - notably the Amacrine cells have a huge variety in morphology with a recent study identifying over 60 different types of amacrine cells. At this time our batch corrected pan retina cell space does not resolve individual sub cell types with high resolution. 
 
 ## The scEiaD is a unique ocular resource that provides a highly diverse, large N dataset with a relatively small amount of compute power
 
@@ -405,11 +410,11 @@ We have assembled the largest ocular single cell transcriptome database to date.
 
 ## Benchmarking and quantitation of integration performance is crucial for meta-atlas studies
 
-We originally intended to just use the Seurat CCA method to integrate the datasets. However, the long run-times of CCA and poor integration of our known cell types led us to benchmark more methods and parameters. We also originally attempted to "hand-assess" the integration results by using the UMAP 2D projection view. This proved to scale poorly and this led use to curate some of the most useful benchmarking algorithms (NMI, ARI, silhouette, and LISI) that roughly matched our "hand-assessed" results into the scPOP R package. While we chose the scVI algorithm, we do not believe that it will work best for all datasets. We strongly suggest any other groups attempting a similar meta-atlas construction chose a quantifiable set of criteria so optimal methods and parameters can be picked. 
+We originally intended to use the Seurat CCA method to integrate the datasets. However, the long run-times of CCA and poor integration of our known cell types led us to benchmark more methods and parameters. After adding more integration methods we first attempted "hand-assess" the integration results by using the UMAP 2D projection view. This proved to scale poorly and this led use to curate some of the more useful benchmarking algorithms (NMI, ARI, silhouette, and LISI) that roughly matched our "hand-assessed" results into the scPOP R package. While we chose the scVI algorithm, we strongly suggest any other groups attempting a similar meta-atlas construction chose a quantifiable set of criteria so optimal methods and parameters can be picked. 
 
 ## Transfer of cell type labels from a smaller number of studies onto the remainining cells is a powerful way to increase diversity in a meta-atlas
 
-We hand curate over 300,000 cell type labels. With a standard xgboost algorithm using the latent dimensions, cell age classification (developing or matured), and the UMAP coordinates, we can very accurately label the remaining cells. Many other cell type labelling algorithms and systems exist for those groups less willing or able to tune a machine learning algorithm. For example, the developers of scVI also have a cell type label projection algorithm called scANVI. Whichever approach you use, taking a smaller number of high quality labels and projecting them onto the remaining cells is a powerful way to leverage community knowledge across a huge diverse dataset. 
+We first hand curated over 300,000 cell type labels. With a xgboost algorithm using the latent dimensions, cell age classification (developing or matured), and the UMAP coordinates, we can very accurately label the remaining cells. Many other cell type labeling algorithms and systems exist for those groups less willing or able to tune a machine learning algorithm. For example, the developers of scVI also have a cell type label projection algorithm called scANVI. Whichever approach you use, taking a smaller number of high quality labels and projecting them onto the remaining cells is a powerful way to leverage community knowledge across a huge diverse dataset. 
 
 ## Projection allows community knowledge to be leveraged by all
 
@@ -443,13 +448,14 @@ fontsize(predictions %>%
            mutate(pred_correct  = ifelse(PredCellType == TrueCellType, 'Correct', 'incorrect')) %>% 
            group_by(PredCellType, TrueCellType) %>% 
            summarise(Count = n()) %>% 
-           mutate(Ratio  = round(Count / sum(Count),2 )) %>% 
+           mutate(Ratio  = round(Count / sum(Count),3 )) %>% 
            filter(Ratio > 0.05) %>% 
            filter(!grepl('Doubl|Periocu', TrueCellType)) %>% 
            flextable() %>% 
            autofit(), 
          size = 8, 
-         part = 'all')
+         part = 'all') %>% 
+  colformat_double(digits = 2)
 #Output Caption (* * for italics)
 cat(paste0("\n*",supTab_CTmislabels_cap,"*\n"))
 # Output </div>
@@ -473,7 +479,7 @@ supTab_AUCxgboost_cap <- supTab_cap(name='supTab_AUCxgboost', caption =  'Area u
 
 cat("<div id=\"tbl:supTab_AUCxgboost\">")
 #source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
-fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 3), size = 8, part = 'all')
+fontsize(xgboost_pr_table_full %>% arrange(`Cell Type`, Study) %>% flextable() %>% width(width = 3), size = 8, part = 'all') %>% colformat_double(digits = 2)
 #Output Caption (* * for italics)
 cat(paste0("\n*",supTab_AUCxgboost_cap,"*\n"))
 # Output </div>
@@ -499,7 +505,7 @@ supFig_platformInt_cap <- supFig_cap(name='supFig_platformInt', caption =  'Dist
 input <- list()
 input[['meta_column']] <- 'CellType_predict'
 input[['pt_size_back']] <- 5
-input[['pt_size_meta']] <- 5
+input[['pt_size_meta']] <- 7
 input[['gene_and_meta_scatter_tech']] <- 'Droplet'
 input[['meta_column_transform']] <- 'None'
 #input[['meta_filter_cat']] <- 'CellType_predict'

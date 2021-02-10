@@ -40,7 +40,7 @@ tidy_dagitty(dagified)
 set.seed(51345)
 b <- tidy_dagitty(dagified) %>% as_tbl_graph() %>% 
   mutate(type = case_when(name %in% c('fastq', 'CellType', 'BatchInfo') ~ 'Input',
-                          name %in% c('DiffTesting', 'Velocity', 'Trajectory','umap', 'projectedCellTypes','cluster') ~ 'Outputs'),
+                          name %in% c('DiffTesting', 'Velocity', 'Trajectory','umap', 'projectedCellType','cluster') ~ 'Outputs'),
          name = case_when(name == 'CellType' ~ 'Published\nCell Types',
                           name == 'projectedCellType' ~ 'Learned\nCell Types',
                           name == 'DiffTesting' ~ 'Diff\nTesting',
