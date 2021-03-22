@@ -49,6 +49,17 @@ pr_calculator <- function(test_predictions, partition){
   out
 }
 
+label2id <- predictions %>% select(CellType, CellTypeID) %>% distinct
+test_predictions <- predictions %>% 
+  inner_join(umapRef %>% select(Barcode, true_cell_label = CellType)) %>% 
+  filter(!is.na(true_cell_label), 
+         true_cell_label != 'None', 
+         CellType != 'None') %>% 
+  inner_join(label2id %>% select(true_cell_label = CellType, true_label_id = CellTypeID))
+
+
+
+
 pr_list <- list()
 for (i in c('All', umap$study_accession %>% unique())){
   #print(i)

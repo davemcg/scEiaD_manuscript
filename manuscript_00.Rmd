@@ -91,9 +91,7 @@ qc <- readr::read_tsv('~/data/scEiaD/QC.tsv.gz')
 
 # cell type prediction
 load('~/data/scEiaD/predictions_n_features-5000__transform-counts__partition-universe__covariate-batch__method-scVIprojectionSO__dims-8__preFilter.scEiaD__dist-0.1__neighbors-50.Rdata')
-# test_predictions <- data.table::fread('~/data/scEiaD/390498_CTpredictortest_data_probabilities.csv.gz') %>% as_tibble %>% 
-#   mutate(max_pred_prob = rowMaxs(.[,-(33:36)] %>% as.matrix ), 
-#          pred_correct = ifelse(cell_type_id == true_cell_id, 'Correct', 'incorrect'))
+
 test_predictions <- model_out$test_dat %>% as_tibble %>% 
   mutate(max_pred_prob = rowMaxs(.[,-(31:34)] %>% as.matrix), 
          pred_correct = ifelse(CellTypeID == true_label_id, 'Correct', 'incorrect'))
