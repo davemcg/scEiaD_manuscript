@@ -2,9 +2,9 @@ library(pool)
 library(RSQLite)
 library(tidyverse)
 library(glue)
-scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/2021_02_05_MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-0.6.sqlite", idleTimeout = 3600000)
+scEiaD_2020_v01 <- dbPool(drv = SQLite(), dbname = "~/data/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite", idleTimeout = 3600000)
 
-meta_filter <- fst::read_fst('~/git/plaeApp/inst/app/www/meta_filter.fst') %>% as_tibble()
+meta_filter <- fst::read_fst('~/data/scEiaD/2021_03_17_meta_filter.fst') %>% as_tibble()
 meta_filter <- meta_filter %>% mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
                                                                    CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
                                                                    CellType_predict == 'RPC' ~ 'RPCs',
@@ -48,7 +48,7 @@ grouping_features <- 'CellType_predict'
 exp_stats <- scEiaD_2020_v01 %>% tbl('grouped_stats') %>%
   filter(Gene %in% genes) %>%
   group_by_at(vars(one_of(c('Gene', grouping_features)))) %>%
-  summarise(cpm = sum(cpm * cell_exp_ct) / sum(cell_exp_ct),
+  summarise(counts = sum(counts * cell_exp_ct) / sum(cell_exp_ct),
             cell_exp_ct = sum(cell_exp_ct, na.rm = TRUE)) %>%
   collect() %>%
   tidyr::drop_na() %>%
@@ -57,7 +57,7 @@ exp_stats <- scEiaD_2020_v01 %>% tbl('grouped_stats') %>%
               summarise(Count = n())) %>%
   mutate(cell_exp_ct = ifelse(is.na(cell_exp_ct), 0, cell_exp_ct)) %>%
   mutate(`%` = round((cell_exp_ct / Count) * 100, 2),
-         Expression = round(cpm * (`%` / 100), 2)) %>%
+         Expression = round(counts * (`%` / 100), 2)) %>%
   select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
   arrange(-Expression) 
 

@@ -6,16 +6,21 @@ library(cowplot)
 library(patchwork)
 a <- meta_filter %>% 
   mutate(Platform = gsub('C1', 'SMARTSeq_v4', Platform)) %>%
+  mutate(organism = case_when(grepl('Homo', organism) ~ 'HS',
+                              grepl('Mus', organism) ~ 'MM',
+                              TRUE ~ 'MF')) %>% 
   group_by(organism, Platform) %>% 
   summarise(accession = length(unique(study_accession)), paper = length(unique(PMID)), batch = length(unique(batch))) %>% 
   pivot_longer(cols = accession:batch) %>% 
+  filter(name %in% c('batch','paper')) %>% 
   mutate(Count = value,
          Type = name,
          organism = gsub(' ','\n',organism)) %>%  
-  ggplot(aes(x=Platform, y=Count, fill = Type, group = Count)) + 
-  facet_wrap(~organism) + 
+  ggplot(aes(x=Platform, y=Count, fill = organism, group = Count, label = Count)) + 
+  facet_wrap(~Type) +
   geom_bar(stat = 'identity', position = position_dodge2()) + 
   cowplot::theme_cowplot() + 
+  geom_text(position = position_dodge(width = 1)) + 
   coord_flip()
 
 dagified <- dagify('counts' ~ 'fastq',

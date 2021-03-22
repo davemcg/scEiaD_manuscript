@@ -13,17 +13,17 @@ pr_calculator <- function(test_predictions, partition){
       left_join(umapRef %>% select(Barcode, study_accession), by = 'Barcode') %>% 
       filter(study_accession == partition)
   } 
-  cell_type2id <- test_predictions %>% select(cell_type_id, CellType) %>% distinct()
+  cell_type2id <- test_predictions %>% select(CellTypeID, CellType) %>% distinct()
   target_cell_types <-unique(cell_type2id$CellType)
   pr_df <- test_predictions %>% 
-    select(-cell_type_id, -CellType) %>% 
-    rename(cell_type_id = true_cell_id) %>% 
+    select(-CellTypeID, -CellType) %>% 
+    rename(CellTypeID = true_label_id) %>% 
     inner_join(cell_type2id) %>% 
     filter(CellType%in% target_cell_types) %>% 
-    select(all_of(target_cell_types), cell_type_id, CellType) 
+    select(all_of(target_cell_types), CellTypeID, CellType) 
   # test_predictions <- predictionsC %>%  
   #   mutate(max_pred_prob = rowMaxs(.[,-(31:ncol(predictionsC))] %>% as.matrix )) %>% 
-  #   select(-cell_type_id) %>% 
+  #   select(-CellTypeID) %>% 
   #   rename(PredCellType = CellType) %>% 
   #   inner_join(umapRef %>% select(Barcode, TrueCellType = CellType)) %>% 
   #   filter(!is.na(TrueCellType)) %>% 
@@ -32,7 +32,7 @@ pr_calculator <- function(test_predictions, partition){
   # 
   # sum(test_predictions$pred_correct == 'Correct') / nrow(test_predictions) 
   # 
-  # cell_type2id <- predictions %>% select(cell_type_id, CellType) %>% distinct %>% filter(CellType!='None')
+  # cell_type2id <- predictions %>% select(CellTypeID, CellType) %>% distinct %>% filter(CellType!='None')
   
   # pr_df <- test_predictions %>% 
   #   select(all_of(target_cell_types), PredCellType, TrueCellType) 
@@ -72,8 +72,7 @@ xgboost_pr_table_full <- pr_list %>% bind_rows() %>%
   select(AUC, `Cell Type`, Study) %>%
   unique() %>%
   arrange(-AUC) 
-  
-  
+ 
 # test <- pr_calculator(predictions, 'SRP157927')
 pr_split_curves <- pr_list %>% bind_rows() %>%
   filter(!Group%in% c('Macro', 'Micro'), Study != 'All') %>%

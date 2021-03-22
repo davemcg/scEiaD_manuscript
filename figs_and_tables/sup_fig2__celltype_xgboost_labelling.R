@@ -12,13 +12,24 @@ ct_processing <-  meta_filter %>%
                                       is.na(CellType_predict) ~ 'Unlabelled', 
                                       TRUE ~ CellType_predict)) 
 
+
+ct_processing_NF <-  meta_filter %>% 
+  mutate(CellType = case_when(is.na(CellType) ~ 'Unlabelled', 
+                              CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
+                              TRUE ~ CellType)) %>% 
+  mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
+                                      CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
+                                      grepl('Mesenchymal', CellType_predict) ~ 'Endothelial',
+                                      is.na(CellType_predict) ~ 'Unlabelled', 
+                                      TRUE ~ CellType_predict)) 
+
 ##########
 # Cell Counts
-predictedCT <- ct_processing %>% 
+predictedCT <- ct_processing_NF %>% 
   group_by(organism, CellType_predict) %>% 
   summarise(`Published Count` = n()) %>% pivot_wider(values_from = `Published Count`, names_from = c(organism))
 colnames(predictedCT) <- c('CellType','HS Transferred','MF Transferred','MM Transferred')
-prelabelledCT <- ct_processing %>% 
+prelabelledCT <- ct_processing_NF %>% 
   group_by(organism, CellType) %>% 
   summarise(`Published Count` = n()) %>% pivot_wider(values_from = `Published Count`, names_from = c(organism))
 colnames(prelabelledCT) <- c('CellType','HS Published','MF Published','MM Published')
@@ -29,13 +40,13 @@ ctTable <- joinedCT %>% flextable()
 
 ##########
 # Study Counts
-predictedSA <- ct_processing %>% 
+predictedSA <- ct_processing_NF %>% 
   filter(!is.na(CellType_predict)) %>% 
   select(CellType_predict, organism, study_accession) %>% unique() %>% 
   group_by(organism, CellType_predict) %>% 
   summarise(`Study Count` = n()) %>% pivot_wider(values_from = `Study Count`, names_from = c(organism))
 colnames(predictedSA) <- c('CellType','HS Studies (transferred)','MF Studies (transferred)','MM Studies (transferred)')
-prelabelledSA <- ct_processing %>% 
+prelabelledSA <- ct_processing_NF %>% 
   filter(!is.na(CellType)) %>% 
   select(CellType, organism, study_accession) %>% unique() %>% 
   group_by(organism, CellType) %>% 

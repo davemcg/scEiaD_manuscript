@@ -31,7 +31,7 @@ make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
   dotplot_data <- dotplot_data %>%
     filter(Gene %in% gene) %>%
     group_by_at(vars(one_of(c('Gene', grouping_features)))) %>%
-    summarise(cpm = sum(cpm * cell_exp_ct) / sum(cell_exp_ct),
+    summarise(counts = sum(counts * cell_exp_ct) / sum(cell_exp_ct),
               cell_exp_ct = sum(cell_exp_ct, na.rm = TRUE)) %>%
     collect() %>%
     tidyr::drop_na() %>%
@@ -40,7 +40,7 @@ make_dotplot <- function(input, db, meta_filter, cat_to_color_df){
                 summarise(Count = n())) %>%
     mutate(cell_exp_ct = ifelse(is.na(cell_exp_ct), 0, cell_exp_ct)) %>%
     mutate(`%` = round((cell_exp_ct / Count) * 100, 2),
-           Expression = cpm * (`%` / 100)) %>%
+           Expression = counts * (`%` / 100)) %>%
     select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
     filter(!is.na(Gene))
   #meanE <- dotplot_data %>% group_by(Gene) %>% summarise(meanE = mean(Expression))

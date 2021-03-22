@@ -17,9 +17,17 @@ celltype_predict_labels <-scEiaD_2020_v01 %>% tbl('celltype_predict_labels') %>%
   mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
                                       CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
                                       TRUE ~ CellType_predict)) %>% collect() %>% 
-  mutate(UMAP_1 = UMAP_1 * 1, UMAP_2 = UMAP_2 * -1) 
-celltype_labels <-scEiaD_2020_v01 %>% tbl('celltype_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * 1, UMAP_2 = UMAP_2 * -1) 
-cluster_labels <-scEiaD_2020_v01 %>% tbl('cluster_labels') %>% collect() %>% mutate(UMAP_1 = UMAP_1 * 1, UMAP_2 = UMAP_2 * -1) 
+  mutate( UMAP_a = UMAP_2 * x_dir,
+          UMAP_b = UMAP_1 * y_dir) %>%
+  mutate(UMAP_1 = UMAP_a, UMAP_2 = UMAP_b)
+celltype_labels <-scEiaD_2020_v01 %>% tbl('celltype_labels') %>% collect() %>% 
+  mutate(  UMAP_a = UMAP_2 * x_dir,
+           UMAP_b = UMAP_1 * y_dir) %>%
+  mutate(UMAP_1 = UMAP_a, UMAP_2 = UMAP_b)
+cluster_labels <-scEiaD_2020_v01 %>% tbl('cluster_labels') %>% collect() %>% 
+  mutate(  UMAP_a = UMAP_2 * x_dir,
+           UMAP_b = UMAP_1 * y_dir) %>%
+  mutate(UMAP_1 = UMAP_a, UMAP_2 = UMAP_b)
 mf <- meta_filter 
 
 # generate color_mappings
@@ -31,9 +39,9 @@ categorical_columns <- c("Phase","batch","study_accession","library_layout","org
 meta_filter <- meta_filter %>% mutate(SubCellType = tidyr::replace_na(SubCellType, 'None'),
                                       subcluster = as.character(subcluster)) 
 
-  
+
 map_color <- function(column, meta_filter){
- # master_colorlist <- c(pals::polychrome()[3:length(pals::polychrome())], pals::alphabet2())
+  # master_colorlist <- c(pals::polychrome()[3:length(pals::polychrome())], pals::alphabet2())
   master_colorlist <- c(pals::cols25()[1:23],pals::alphabet())
   values <- meta_filter %>% pull(!!column) %>% unique %>% sort
   if(length(values) > length(master_colorlist) ){
@@ -78,9 +86,9 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
     meta_filter[,meta_column] <- log2(meta_filter[,meta_column] + 1)
   }
   if (!is.null(input$meta_filter_on)){
-  p_data <- meta_filter %>%
-    #filter(!grepl('Doub|\\/Margin\\/Periocular', CellType)) %>%
-    filter_at(vars(all_of(input$meta_filter_cat)), all_vars(. %in% input$meta_filter_on))
+    p_data <- meta_filter %>%
+      #filter(!grepl('Doub|\\/Margin\\/Periocular', CellType)) %>%
+      filter_at(vars(all_of(input$meta_filter_cat)), all_vars(. %in% input$meta_filter_on))
   } else {
     p_data <- meta_filter %>% filter(!is.na(!!as.symbol(input$meta_column)))
   }
@@ -189,5 +197,10 @@ celltype_predict_labels <- celltype_predict_labels %>%
                      TRUE ~ CellType_predict)) %>% 
   group_by(CellType_predict) %>% 
   summarise(UMAP_1 = mean(UMAP_1), UMAP_2 = mean(UMAP_2)) %>% 
-  filter(!CellType_predict %in% c('B-Cell','T-Cell','Smooth Muscle Cell', 'AC/HC_Precurs', 'Red Blood Cells'))
+  filter(!CellType_predict %in% c('B-Cell','T-Cell','Smooth Muscle Cell', 'Red Blood Cells')) %>% 
+  mutate(CellType_predict = case_when(CellType_predict == 'Photoreceptor Precursors' ~ 'PR Precursors',
+                                      CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursors',
+                                      CellType_predict == 'RPC' ~ 'RPCs',
+                                      CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
+                                      TRUE ~ CellType_predict))
 

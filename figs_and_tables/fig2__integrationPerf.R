@@ -1,7 +1,21 @@
+# celltype prediction accuracy
+load('~/data/scEiaD/merged_xgboost_2021-03-17.Rdata')
+
+accuracy <- accuracy %>% 
+  filter(score != 0) %>% 
+  mutate(
+    norm = str_extract(file, 'transform-[a-zA-Z]+') %>% gsub('transform-','',.),
+    nf = str_extract(file, 'n_features-\\d+') %>% gsub('n_features-', '', .) %>% as.numeric(),
+    dims = str_extract(file, 'dims-\\d+') %>% gsub('dims-', '', .) %>% as.numeric(),
+    method = str_extract(file, 'method-[a-zA-Z]+') %>% gsub('method-','',.),
+    knn = str_extract(file, 'knn-\\d+\\.\\d+|knn-\\d+') %>% gsub('knn-', '', .) %>% as.numeric(),
+    epochs = str_extract(file, 'epochs-\\d+') %>% gsub('epochs-','',.) %>% as.numeric())
+
+
 load('~/data/scEiaD//metrics_2020_11_28.Rdata')
 perfO <- perf
 
-load('~/data/scEiaD//merged_stats_2021-02-05.Rdata')
+load('~/data/scEiaD//merged_stats_2021-03-17.Rdata')
 
 perf <- perf %>% 
   mutate(knn = case_when(method == 'scArches' ~ 7, TRUE ~ knn))
@@ -22,7 +36,7 @@ perf_tabula <- perfO %>% unique() %>% filter(set %in% c('TabulaDroplet')) %>%
   select(Score, Group, Value, set, dims:normalization) %>% 
   filter(Score %in% c('LISI','Silhouette', 'ARI', 'PCR', 'NMI')) 
 
-perf_scVI <- perf %>% unique() %>% filter(set %in% c('TabulaDroplet', 'universe')) %>% 
+perf_scVI <- perf %>% unique() %>% filter(set %in% c('universe')) %>% 
   select(Score, Group, Value, set, dims:normalization) %>% 
   filter(Score %in% c('LISI','Silhouette', 'ARI', 'PCR', 'NMI')) 
 
@@ -98,22 +112,25 @@ zscore_sum_all_methods <- zscore_tabula  %>%
   scale_alpha_continuous(range = c(0.6, 1), breaks =c(8,30))
 
 
-zscore_droplet_scVI_optimize <- perf_scVI%>% 
-  filter(knn > 0.4, knn < 10) %>% 
+zscore_droplet_scVI_optimize <- perf_scVI %>% 
+  #filter(method == 'scVIprojection') %>% 
   filter(grepl('scVI', method), epochs == 5) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
+  left_join(accuracy %>% group_by(norm, nf, dims, method, knn, epochs) %>% summarise(xgboost_score = mean(score))) %>% 
   mutate(sumZScale = 
            -scale(LISI_CellType)[,1] +
            scale(Silhouette_CellType)[,1] +
            scale(`NMI_CellType-Cluster`)[,1] +
            scale(`ARI_CellType-Cluster`)[,1] +
            
-           #scale(LISI_Batch)[,1] * 0.5 + 
-           -scale(LISI_Cluster)[,1] +
-           #-scale(Silhouette_Batch)[,1] * 0.5  + 
-           scale(Silhouette_Cluster)[,1] #+
+           scale(`xgboost_score`)[,1] +
            
-           #scale(`PCR_After-Before`)[,1]
+           scale(LISI_Batch)[,1] + 
+           -scale(LISI_Cluster)[,1] +
+           -scale(Silhouette_Batch)[,1]  + 
+           scale(Silhouette_Cluster)[,1] #+
+         
+         #scale(`PCR_After-Before`)[,1]
   ) %>% 
   left_join(cluster_stats) %>% 
   filter(!is.na(clusterN)) %>% 
@@ -121,9 +138,11 @@ zscore_droplet_scVI_optimize <- perf_scVI%>%
   filter(!is.na(clusterN)) %>% 
   mutate(nf = as.factor(nf),
          `scVI latent dims` = as.factor(dims)) %>% 
-  ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`, shape = method)) + 
-  ggbeeswarm::geom_quasirandom(size = 3, groupOnX=FALSE) +
+  ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`, fill = method)) + 
+  #ggbeeswarm::geom_quasirandom(size = 3, groupOnX=FALSE) +
+  geom_boxplot() +
   scale_color_manual(values = pals::brewer.set1(n = 10) %>% unname()) +
+  scale_fill_manual(values = c('white','gray')) +
   cowplot::theme_cowplot() +
   ylab('Number of\nHVGs')
 
