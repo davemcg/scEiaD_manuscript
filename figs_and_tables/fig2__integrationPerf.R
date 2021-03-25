@@ -117,7 +117,7 @@ zscore_droplet_scVI_optimize <- perf_scVI %>%
   filter(grepl('scVI', method), epochs == 5) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 
   left_join(accuracy %>% group_by(norm, nf, dims, method, knn, epochs) %>% summarise(xgboost_score = mean(score))) %>% 
-  mutate(sumZScale = 
+  mutate( sumZScale = 
            -scale(LISI_CellType)[,1] +
            scale(Silhouette_CellType)[,1] +
            scale(`NMI_CellType-Cluster`)[,1] +
@@ -137,7 +137,10 @@ zscore_droplet_scVI_optimize <- perf_scVI %>%
   #filter(knn == 0.6, method == 'scVI') %>% 
   filter(!is.na(clusterN)) %>% 
   mutate(nf = as.factor(nf),
-         `scVI latent dims` = as.factor(dims)) %>% 
+         `scVI latent dims` = as.factor(dims),
+         method = gsub('scVIprojection', 'scVI-projection',method),
+         method = gsub('scVI$', 'scVI-standard', method),
+         method = factor(method, levels = c('scVI-standard','scVI-projection'))) %>% 
   ggplot(aes(x=sumZScale, y = nf, color = `scVI latent dims`, fill = method)) + 
   #ggbeeswarm::geom_quasirandom(size = 3, groupOnX=FALSE) +
   geom_boxplot() +

@@ -64,7 +64,8 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
                                         celltype_labels,
                                         tabulamuris_predict_labels,
                                         cluster_labels,
-                                        cat_to_color_df
+                                        cat_to_color_df,
+                                        velocity = FALSE
 ){
   
   meta_column <- input$meta_column
@@ -185,6 +186,10 @@ make_meta_scatter_umap_plot <- function(input, mf, meta_filter,
   col_size <- {meta_filter[[meta_column]]} %>% n_distinct
   out <- list()
   out$plot <- plot + more
+  if (velocity){
+    out$plot <- plot + geom_segment(data=grid.df, alpha = 0.6, mapping=aes(y=start.1, x=-start.2, 
+                                                             yend=end.1, xend=-end.2), arrow=arrow(length=unit(0.05, "inches"))) + more
+  }
   out$col_size <- col_size
   out
 }
