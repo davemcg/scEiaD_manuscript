@@ -17,7 +17,7 @@ pr_calculator <- function(test_predictions, partition){
   target_cell_types <-unique(cell_type2id$CellType)
   pr_df <- test_predictions %>% 
     select(-CellTypeID, -CellType) %>% 
-    rename(CellTypeID = true_label_id) %>% 
+    dplyr::rename(CellTypeID = true_label_id) %>% 
     inner_join(cell_type2id) %>% 
     filter(CellType%in% target_cell_types) %>% 
     select(all_of(target_cell_types), CellTypeID, CellType) 
