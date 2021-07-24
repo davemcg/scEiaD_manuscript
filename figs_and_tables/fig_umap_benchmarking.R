@@ -1,9 +1,9 @@
 library(scattermore)
 source('~/git/scEiaD_manuscript/figs_and_tables/fig2__integrationPerf.R')
-load('~/data/scEiaD/n_features-2000__transform-standard__partition-TabulaDroplet__covariate-batch__method-none__dims-30__dist-0.3__neighbors-15__knn-7__umap.Rdata')
+load('~/data/scEiaD/giga_all_methods/gigascience/umap/n_features-2000__transform-standard__partition-universe__covariate-batch__method-none__dims-30__epochs-5__dist-0.1__neighbors-50__knn-20__umap.Rdata')
 umapNone <- umap
 
-load('~/data/scEiaD/n_features-2000__transform-standard__partition-TabulaDroplet__covariate-batch__method-combat__dims-30__dist-0.3__neighbors-15__knn-7__umap.Rdata')
+load('~/data/scEiaD/giga_all_methods/gigascience/umap/n_features-2000__transform-libSize__partition-universe__covariate-batch__method-combat__dims-8__epochs-5__dist-0.1__neighbors-50__knn-20__umap.Rdata')
 umapCombat <- umap
 
 umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsize = 2){
@@ -50,6 +50,16 @@ umap_plot_maker <- function(umap, color_against = 'CellType', red = 'UMAP', ptsi
       guides(colour = guide_legend(override.aes = list(size=2, alpha = 1))) + 
       theme_void() +
       scale_colour_manual(values = pals::glasbey()) +
+      xlab(paste(red, '1')) + ylab(paste(red, '2')) 
+  } else if (color_against == 'organism'){
+    umapFig %>% 
+      ggplot() + 
+      geom_scattermore(aes(x=umapFig[,paste0(red,'_1')] %>% pull(1), 
+                           y = umapFig[,paste0(red,'_2')] %>% pull(1), 
+                           colour = organism), pointsize = (ptsize/3), alpha = 0.1) + 
+      guides(colour = guide_legend(override.aes = list(size=2, alpha = 1))) + 
+      theme_void() +
+      scale_colour_manual(values = pals::brewer.set3(n=3)) +
       xlab(paste(red, '1')) + ylab(paste(red, '2')) 
   }
 }
