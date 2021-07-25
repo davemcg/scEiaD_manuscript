@@ -425,13 +425,13 @@ plot_grid(rpe_plot ,
 
 ## Reproduciblity and data availability
 
-The set of Snakemake pipelines that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad [@kosterSnakemakeScalableBioinformatics2012]. The publication commit is #ffdf738. Furthermore, the repository has been deposited at Zenodo under 10.5281/zenodo.4638117 We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide package versions as the supplementary file "R_session_info.txt"
+The set of Snakemake pipelines that takes in the raw fastq sequence and outputs the scEiaD is at https://github.com/davemcg/scEiad [@kosterSnakemakeScalableBioinformatics2012]. The publication commit is #ffdf738. Furthermore, the repository has been deposited at Zenodo under 10.5281/zenodo.5129265 We will briefly discuss the pipeline choices, programs and algorithms, and versions below. For the R packages, we provide package versions as the supplementary file "R_session_info.txt"
 
-We have deposited the 10x (v2) fastq files for our iPSC-based RPE data in GEO at accession GSE180662. We give download links for the count matrices, seurat and anndata objects, cell level metadata, and our codebases in `supTab_cap(name = 'supTab_links', display = 'cite')`.
+We have deposited the 10x (v2) fastq files for our iPSC-based RPE data in GEO at accession GSE180662. We give download links for the count matrices, seurat and anndata objects, cell level metadata, and our codebases in `r supTab_cap(name = 'supTab_links', display = 'cite')`.
 
 ## Quantification of gene counts
 
-Gene quantification is handled by the SnakeQUANT snakefile. First, we generated multiple quantification indices to facilitate calculation of RNA velocity. For each droplet technology, we generated a separate set of transcript sequences that contain both exonic and intronic sequences using the “get_velocity_files” function from the R package BUSpaRse. The reference transcriptome annotation used to build sets of transcript sequences were the Gencode “gencode.vM25.annotation.gtf.gz” and “gencode.v35.annotation.gtf.gz” for mouse and human, respectively [@harrowGENCODEReferenceHuman2012; @jGENCODEReferenceHuman2012]. Because the Macaca Fascicularis genome is less well annotated we used the Ensembl release 101  genome and transcriptome annotation “Macaca_mulatta.Mmul_101.gtf.gz”  [@yatesEnsembl20202020].  A single set of exonic transcript sequences was created for each species for all well techonologies. A kallisto quantification index was generated for each of these fastqs using kallisto index (0.46.2) [@brayNearoptimalProbabilisticRNAseq2016]. Well based samples were quantified using kallisto quant. For the relatively few single ended samples, the params “–single -l 200 -s 30” were used for kallisto quant. Otherwise the “–bias” flag was added. For the droplet-based samples, we adapted the bustools workflow for generating spliced and unspliced count matrices. (0.39.4) [@melstedBarcodeUMISet2019].
+Gene quantification is handled by the SnakeQUANT snakefile. First, we generated multiple quantification indices to facilitate calculation of RNA velocity. For each droplet technology, we generated a separate set of transcript sequences that contain both exonic and intronic sequences using the “get_velocity_files” function from the R package BUSpaRse. The reference transcriptome annotation used to build sets of transcript sequences were the Gencode “gencode.vM25.annotation.gtf.gz” and “gencode.v35.annotation.gtf.gz” for mouse and human, respectively [@harrowGENCODEReferenceHuman2012; @jGENCODEReferenceHuman2012]. Because the Macaca Fascicularis genome is less well annotated we used the Ensembl release 101 genome and transcriptome annotation “Macaca_mulatta.Mmul_101.gtf.gz”  [@yatesEnsembl20202020].  A single set of exonic transcript sequences was created for each species for all well techonologies. A kallisto quantification index was generated for each of these fastqs using kallisto index (0.46.2) [@brayNearoptimalProbabilisticRNAseq2016]. Well based samples were quantified using kallisto quant. For the relatively few single ended samples, the params “–single -l 200 -s 30” were used for kallisto quant. Otherwise the “–bias” flag was added. For the droplet-based samples, we adapted the bustools workflow for generating spliced and unspliced count matrices. (0.39.4) [@melstedBarcodeUMISet2019].
 
 ## Intersection of gene names between mouse, macaque, and human
 
@@ -522,9 +522,9 @@ Many retina atlases have been published to date. We argue that we have created t
 ```{r supTab1_CTcounts, fig.width=4, fig.height=14, out.width=300, echo = F, results='asis', warning = F, fig.cap = supTab1_CTcounts_cap, fig.pos = 'H'}
 supTab1_CTcounts_cap <- supTab_cap(name='supTab1_CTcounts', caption =  'Counts for cell type labels. Published are the author created labels from the published datasets. Transferred are the cell labels that were transferred by our xgboost-based machine learning model onto the entire scEiaD dataset.')
 cat("<div id=\"tbl:supTab1_CTcounts\">")
-source('figs_and_tables/sup_fig__xgboost_PR.R')
-source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R')
-fontsize(ctTable  %>% padding(padding = 0, part = "body") %>% align(align = 'center', part = 'all') %>% autofit(), size = 8, part = 'all')
+suppressMessages( source('figs_and_tables/sup_fig__xgboost_PR.R'))
+suppressMessages( source('figs_and_tables/sup_fig2__celltype_xgboost_labelling.R'))
+fontsize(ctTable  %>% padding(padding = 0, part = "body") %>% align(align = 'center', part = 'all') %>% autofit(), size = 8, part = 'all') %>% fit_to_width(7)
 #Output Caption (* * for italics)
 cat(paste0("\n*",supTab1_CTcounts_cap,"*\n"))
 # Output </div>
@@ -572,11 +572,11 @@ cat("</div>")
 ```
 
 
-```{r supTab_SAcounts, fig.width=5, fig.height=14, out.width=300, fig.cap=supTab_SAcounts_cap, echo=FALSE, results='asis', message = FALSE, warning = FALSE}
+```{r supTab_SAcounts, fig.width=6, fig.height=14, out.width=300, fig.cap=supTab_SAcounts_cap, echo=FALSE, results='asis', message = FALSE, warning = FALSE}
 cat("<div id=\"tbl:supTab_SAcounts\">")
 supTab_SAcounts_cap <- supTab_cap(name='supTab_SAcounts', caption =  'Counts for number of studies with cell types labels before and after cell type label transfer')
 
-fontsize(saTable  %>% padding(padding = 0, part = "body") %>% align(align = 'center', part = 'all') %>% autofit(), size = 8, part = 'all') 
+fontsize(saTable  %>% padding(padding = 5, part = "body") %>% align(align = 'center', part = 'all'), size = 8, part = 'all') 
 #Output Caption (* * for italics)
 cat(paste0("\n*",supTab_SAcounts_cap,"*\n"))
 # Output </div>
@@ -584,7 +584,7 @@ cat("</div>")
 ```
 
 
-```{r supTab_links, fig.width=2, fig.height=6, out.width=300, echo = F, results='asis', warning = F, fig.cap = supTab_links_cap, fig.pos = 'H'}
+```{r supTab_links, fig.width=3, fig.height=6, out.width=600, echo = F, results='asis', warning = F, fig.cap = supTab_links_cap, fig.pos = 'H'}
 supTab_links_cap <- supTab_cap(name='supTab_links', caption =  'Links to code and resources')
 cat("<div id=\"tbl:supTab_links\">")
 
@@ -597,10 +597,10 @@ linksTable <- tibble::tribble(
                                        "Cell level metadata",     "http://hpc.nih.gov/~mcgaugheyd/scEiaD/2021_03_17/metadata_filter.tsv.gz",          NA,
                               "Codebase for scEiaD creation",                                           "https://github.com/davemcg/scEiaD",   "ffdf738",
                             "Codebase for scEiad manuscript",                                "https://github.com/davemcg/scEiaD_manuscript",          NA,
-                "Zenodo deposit of all above files and code",                                                      "10.5281/zenodo.4638117",   "4638117",
+                "Zenodo deposit of all above files and code",                                                      "https://zenodo.org/record/5129265",   "5129265",
                             "iPSC RPE scRNA Raw Fastq Files",                "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE180662", "GSE180662"
                 )
-fontsize(flextable(linksTable)  %>% padding(padding = 0, part = "body") %>% align(align = 'left', part = 'all') %>% autofit(), size = 4, part = 'all')
+fontsize(flextable(linksTable)  %>% padding(padding = 5, part = "all") %>% align(align = 'left', part = 'all'), size = 8, part = 'all') %>% autofit() %>% fit_to_width(7)
 #Output Caption (* * for italics)
 cat(paste0("\n*",supTab_links_cap,"*\n"))
 # Output </div>
