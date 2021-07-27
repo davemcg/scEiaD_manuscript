@@ -714,13 +714,9 @@ ggdraw() + draw_image("figs_and_tables/rpe_eyeintegration.png", scale = 1)
 ```
 
 
+# Acknowledgments
 
-
-
-
-
-
-
+We would like the thank the many groups who provided the raw data required to create this project. We keep a updated list of citations for the projects we pulled data from at https://plae.nei.nih.gov. We would also like to thank Adam Gayoso, who provided many useful comments on scVI parameter behavior and the Google colab implementation of scVI. Finally, this work utilized the computational resources of the NIH HPC Biowulf cluster (http://hpc.nih.gov).
 
 
 
